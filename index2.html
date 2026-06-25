@@ -1,0 +1,2189 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Auto Harvester: ระบบเติบโต (15x15)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap');
+        
+        body {
+            font-family: 'Kanit', sans-serif;
+            background-color: #1a202c;
+            color: #e2e8f0;
+            overflow-x: hidden;
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            user-select: none; 
+        }
+
+        #canvas-container {
+            flex: 1;
+            background-color: #87CEEB; 
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            border: 4px solid #4a5568;
+            position: relative;
+            min-height: 400px;
+            cursor: grab;
+        }
+        
+        #canvas-container:active { cursor: grabbing; }
+        canvas { display: block; width: 100% !important; height: 100% !important; outline: none; }
+        
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #2d3748; }
+        ::-webkit-scrollbar-thumb { background: #4a5568; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #718096; }
+        
+        #loading {
+            position: absolute; inset: 0; background: rgba(0,0,0,0.8);
+            display: flex; justify-content: center; align-items: center;
+            color: white; font-size: 1.5rem; z-index: 10; transition: opacity 0.5s;
+        }
+    </style>
+</head>
+<body class="py-4">
+
+    <!-- ดนตรีประกอบ -->
+    <audio id="bgm" loop preload="auto">
+        <source src="https://codeskulptor-demos.commondatastorage.googleapis.com/pang/paza-moduless.mp3" type="audio/mpeg">
+    </audio>
+
+    <div id="main-menu" class="fixed inset-0 bg-gray-900 bg-opacity-95 z-50 flex flex-col items-center justify-center p-8 overflow-y-auto">
+        <h1 class="text-5xl md:text-7xl font-bold text-yellow-400 mb-8 drop-shadow-lg text-center">🚜 สหกรณ์การเกษตร HQ</h1>
+        
+        <div class="text-2xl text-white mb-12 bg-gray-800 px-10 py-6 rounded-3xl border-4 border-green-500 shadow-[0_0_25px_rgba(34,197,94,0.4)] z-10 flex gap-6 items-center">
+            <div>ยอดเงินคงเหลือ: <span id="menu-money" class="text-green-400 font-bold text-4xl">1,000</span> ฿</div>
+        </div>
+
+        <div id="resume-container" class="w-full max-w-2xl mb-6 hidden">
+            <div class="bg-blue-900/50 border border-blue-500 p-8 rounded-2xl text-center shadow-[0_0_20px_rgba(59,130,246,0.4)]">
+                <h3 class="text-3xl font-bold text-white mb-4">⚠️ ฟาร์มกำลังทำงานอยู่!</h3>
+                <p class="text-blue-200 mb-6 text-xl">หุ่นยนต์ของคุณกำลังทำงานอยู่ในไร่ คุณสามารถกลับไปดูได้</p>
+                <button onclick="resumeGame()" class="w-full bg-blue-600 hover:bg-blue-500 text-white text-2xl font-bold py-4 px-12 rounded-full shadow-lg transition-transform transform hover:scale-105 mb-4">
+                    🚜 กลับไปหน้าฟาร์ม
+                </button>
+            </div>
+        </div>
+        
+        <div class="flex gap-4 flex-wrap justify-center" id="start-btn-group">
+            <button id="btn-start" onclick="startGame()" class="bg-green-600 hover:bg-green-500 text-white text-3xl font-bold py-4 px-12 rounded-full shadow-[0_10px_30px_rgba(34,197,94,0.5)] transition-all transform hover:scale-105">
+                ▶️ เริ่มเกมส์
+            </button>
+            <button onclick="openHowToPlay()" class="bg-blue-600 hover:bg-blue-500 text-white text-3xl font-bold py-4 px-8 rounded-full shadow-[0_10px_30px_rgba(59,130,246,0.5)] transition-all transform hover:scale-105">
+                📖 วิธีเล่น
+            </button>
+        </div>
+    </div>
+
+    <!-- ปุ่มคลังสินค้า: แก้ไขให้แสดงผลแน่นอนเมื่อกดเริ่มเกม -->
+    <button id="btn-toggle-panel" onclick="togglePanel()" style="display: none;" class="fixed top-4 left-4 z-40 bg-gradient-to-r from-pink-500 to-orange-400 text-white p-3 rounded-full shadow-[0_0_20px_rgba(249,115,22,0.8)] border-2 border-white hover:from-pink-400 hover:to-orange-300 text-2xl transition transform hover:scale-110 font-bold">
+        🎒 คลัง & ร้านค้า
+    </button>
+
+    <!-- HUD แสดงเวลาพ่อค้า -->
+    <div id="merchant-hud" class="fixed top-24 right-4 z-30 bg-gray-900 border-2 border-yellow-500 rounded-xl p-3 shadow-[0_0_15px_rgba(234,179,8,0.4)] text-white flex flex-col items-center cursor-pointer transition transform hover:scale-105" onclick="openMerchantModal()" style="display: none;">
+        <div class="text-3xl mb-1 relative">
+            🤠
+            <span id="merchant-alert" class="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-pulse hidden">!</span>
+        </div>
+        <div id="merchant-status" class="text-xs font-bold text-yellow-400">เดินทางมาใน: 02:00</div>
+    </div>
+
+    <div id="top-hud" style="display: none;" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-30 bg-gray-900/90 border border-gray-600 rounded-full px-4 md:px-8 py-2 shadow-[0_5px_15px_rgba(0,0,0,0.5)] flex-wrap justify-center gap-4 md:gap-6 items-center text-sm md:text-lg backdrop-blur-sm transition-all duration-300">
+        
+        <div id="hud-storage-container" class="text-blue-200 font-bold drop-shadow-md bg-blue-900/60 px-4 py-1 rounded-full border-2 border-blue-500 transition-all duration-300 flex items-center gap-2">
+            📦 ความจุ: <span id="hud-storage">0</span> / <span id="hud-max-storage">500</span>
+        </div>
+
+        <div class="text-green-400 font-bold drop-shadow-md">฿ <span id="hud-money">0</span></div>
+        <div class="text-yellow-200 drop-shadow-md hidden md:block" title="ข้าวโอ๊ต">🌾 <span id="hud-oat">0</span></div>
+        <div class="text-yellow-400 drop-shadow-md hidden md:block" title="ข้าวสาลี">🌾 <span id="hud-wheat">0</span></div>
+        <div class="text-orange-400 drop-shadow-md hidden md:block" title="ข้าวบาร์เลย์">🌾 <span id="hud-barley">0</span></div>
+        <div class="text-yellow-500 drop-shadow-md hidden md:block" title="ข้าวโพด">🌽 <span id="hud-corn">0</span></div>
+        <div class="text-green-400 drop-shadow-md hidden md:block" title="ถั่วเหลือง">🫘 <span id="hud-soybean">0</span></div>
+        
+        <button id="btn-mute" onclick="toggleMute()" class="ml-2 bg-green-600 hover:bg-green-500 text-white px-4 py-1 rounded-full text-sm font-bold shadow transition-colors">
+            🔊 เปิดเสียง
+        </button>
+        <button id="btn-pause" onclick="togglePause()" class="ml-1 bg-blue-600 hover:bg-blue-500 text-white px-4 py-1 rounded-full text-sm font-bold shadow transition-colors">
+            ⏸️ หยุดระบบ
+        </button>
+    </div>
+
+    <!-- แผง UI คลังและร้านค้า -->
+    <div id="ui-panel" style="display: none;" class="fixed top-0 left-0 h-full w-80 bg-gray-800 p-6 shadow-[5px_0_25px_rgba(0,0,0,0.7)] border-r border-gray-700 z-50 transform -translate-x-full transition-transform duration-300 flex flex-col overflow-y-auto">
+        <button onclick="togglePanel()" class="absolute top-2 right-4 text-gray-400 hover:text-white text-4xl font-bold">&times;</button>
+        
+        <h2 class="text-xl font-semibold mb-4 text-white border-b border-gray-600 pb-2 pr-8">📦 คลังสะสมผลผลิต</h2>
+        <div class="mb-4">
+            <div class="bg-gray-900 p-3 rounded-lg text-center border border-green-500/30 shadow-inner">
+                <div class="text-gray-400 text-xs mb-1">ยอดเงินสะสม</div>
+                <div class="text-2xl font-bold text-green-400">฿ <span id="stat-money">0</span></div>
+            </div>
+        </div>
+
+        <div class="space-y-2 mb-4 max-h-[22vh] overflow-y-auto pr-1">
+            <div class="flex justify-between items-center bg-gray-700/50 p-2 rounded-lg border-l-4 border-yellow-200 text-sm">
+                <span>🌾 ข้าวโอ๊ต</span> <span class="font-bold text-yellow-200" id="stat-oat">0</span>
+            </div>
+            <div class="flex justify-between items-center bg-gray-700/50 p-2 rounded-lg border-l-4 border-yellow-400 text-sm">
+                <span>🌾 ข้าวสาลี</span> <span class="font-bold text-yellow-400" id="stat-wheat">0</span>
+            </div>
+            <div class="flex justify-between items-center bg-gray-700/50 p-2 rounded-lg border-l-4 border-orange-400 text-sm">
+                <span>🌾 บาร์เลย์</span> <span class="font-bold text-orange-400" id="stat-barley">0</span>
+            </div>
+            <div class="flex justify-between items-center bg-gray-700/50 p-2 rounded-lg border-l-4 border-yellow-500 text-sm">
+                <span>🌽 ข้าวโพด</span> <span class="font-bold text-yellow-500" id="stat-corn">0</span>
+            </div>
+            <div class="flex justify-between items-center bg-gray-700/50 p-2 rounded-lg border-l-4 border-green-400 text-sm">
+                <span>🫘 ถั่วเหลือง</span> <span class="font-bold text-green-400" id="stat-soybean">0</span>
+            </div>
+        </div>
+
+        <h2 class="text-xl font-semibold mb-3 text-white border-b border-gray-600 pb-2">🛒 โชว์รูมหุ่นยนต์ออโต้</h2>
+        <div class="grid grid-cols-1 gap-2 mb-4">
+            <button onclick="buyCar('auto_basic')" class="bg-gray-900 border border-gray-700 hover:border-yellow-500 rounded-xl p-2 transition w-full">
+                <div class="flex justify-between items-center px-1">
+                    <div class="flex items-center gap-3">
+                        <span class="text-3xl">🤖</span>
+                        <div class="text-left">
+                            <span class="text-[12px] font-bold text-white block">ออโต้มาตรฐาน</span>
+                            <span class="text-[12px] text-green-400 block font-semibold">30,000 ฿</span>
+                        </div>
+                    </div>
+                    <span class="text-xs bg-gray-700 text-white px-2 py-1 rounded-full border border-gray-500">มี <span id="count-auto_basic" class="text-yellow-400 font-bold">1</span></span>
+                </div>
+            </button>
+            <button onclick="buyCar('auto_fast')" class="bg-gray-900 border border-gray-700 hover:border-blue-500 rounded-xl p-2 transition w-full">
+                <div class="flex justify-between items-center px-1">
+                    <div class="flex items-center gap-3">
+                        <span class="text-3xl">🏎️</span>
+                        <div class="text-left">
+                            <span class="text-[12px] font-bold text-white block">ออโต้สปีดซิ่ง</span>
+                            <span class="text-[12px] text-green-400 block font-semibold">60,000 ฿</span>
+                        </div>
+                    </div>
+                    <span class="text-xs bg-gray-700 text-white px-2 py-1 rounded-full border border-gray-500">มี <span id="count-auto_fast" class="text-blue-400 font-bold">0</span></span>
+                </div>
+            </button>
+            <button onclick="buyCar('auto_turbo')" class="bg-gray-900 border border-gray-700 hover:border-red-500 rounded-xl p-2 transition w-full">
+                <div class="flex justify-between items-center px-1">
+                    <div class="flex items-center gap-3">
+                        <span class="text-3xl">⚡</span>
+                        <div class="text-left">
+                            <span class="text-[12px] font-bold text-white block">ออโต้เทอร์โบ</span>
+                            <span class="text-[12px] text-green-400 block font-semibold">100,000 ฿</span>
+                        </div>
+                    </div>
+                    <span class="text-xs bg-gray-700 text-white px-2 py-1 rounded-full border border-gray-500">มี <span id="count-auto_turbo" class="text-red-400 font-bold">0</span></span>
+                </div>
+            </button>
+        </div>
+
+        <h2 class="text-xl font-semibold mb-2 text-white border-b border-gray-600 pb-1 flex justify-between items-center">
+            <span>💰 ตลาดกลาง</span>
+            <span id="market-status-text" class="text-[11px] text-green-400 bg-gray-900 px-2 py-0.5 rounded-full border border-gray-700">(เปิด)</span>
+        </h2>
+        <div class="grid grid-cols-1 gap-1 mb-4 max-h-[22vh] overflow-y-auto pr-1">
+            <button onclick="openSellModal('oat')" class="market-sell-btn bg-yellow-700 hover:bg-yellow-600 text-white py-1.5 px-3 rounded-lg transition shadow text-xs flex justify-between items-center group">
+                <span>ขาย ข้าวโอ๊ต</span> <span class="text-green-300">5 ฿</span>
+            </button>
+            <button onclick="openSellModal('wheat')" class="market-sell-btn bg-yellow-600 hover:bg-yellow-500 text-white py-1.5 px-3 rounded-lg transition shadow text-xs flex justify-between items-center group">
+                <span>ขาย ข้าวสาลี</span> <span class="text-green-200">10 ฿</span>
+            </button>
+            <button onclick="openSellModal('barley')" class="market-sell-btn bg-orange-600 hover:bg-orange-500 text-white py-1.5 px-3 rounded-lg transition shadow text-xs flex justify-between items-center group">
+                <span>ขาย บาร์เลย์</span> <span class="text-green-200">30 ฿</span>
+            </button>
+            <button onclick="openSellModal('corn')" class="market-sell-btn bg-yellow-500 hover:bg-yellow-400 text-white py-1.5 px-3 rounded-lg transition shadow text-xs flex justify-between items-center group font-semibold text-gray-900">
+                <span>ขาย ข้าวโพด</span> <span>80 ฿</span>
+            </button>
+            <button onclick="openSellModal('soybean')" class="market-sell-btn bg-green-600 hover:bg-green-500 text-white py-1.5 px-3 rounded-lg transition shadow text-xs flex justify-between items-center group">
+                <span>ขาย ถั่วเหลือง</span> <span class="text-green-200">200 ฿</span>
+            </button>
+        </div>
+        
+        <div class="mt-auto pt-2 border-t border-gray-600">
+            <button onclick="returnToMenu()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-2 px-3 rounded-lg transition shadow font-bold flex items-center justify-center gap-2 text-sm">
+                <span>🔙</span> กลับหน้าหลัก
+            </button>
+        </div>
+    </div>
+
+    <div id="canvas-container" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; display: none; z-index: 10;">
+        <div id="loading">กำลังสร้างพื้นที่ฟาร์ม (3x3)...</div>
+        <div id="labels-container" class="absolute inset-0 pointer-events-none z-20 overflow-hidden"></div>
+    </div>
+
+    <!-- Modal พ่อค้ามาเยือน -->
+    <div id="merchant-modal" class="fixed inset-0 bg-black/80 flex justify-center items-center opacity-0 pointer-events-none transition-opacity duration-300 z-[100]">
+        <div class="bg-gray-800 border-2 border-yellow-500 rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl transform scale-95 transition-transform duration-300">
+            <div class="text-6xl mb-2">🤠</div>
+            <h3 class="text-2xl font-bold text-yellow-400 mb-1">ออเดอร์พิเศษจากพ่อค้า!</h3>
+            <p class="text-gray-300 mb-4 text-sm">ราคาดีกว่าตลาด 20% แต่เขาจะรอแค่แป๊บเดียวนะ!</p>
+            
+            <div class="bg-gray-900 border border-gray-700 p-4 rounded-xl mb-5 text-left">
+                <div class="flex justify-between items-center mb-2 text-sm border-b border-gray-700 pb-2">
+                    <span class="text-gray-400">สิ่งที่ต้องการ:</span>
+                    <span class="font-bold text-white text-lg" id="merchant-order-crop">🌾 ข้าวสาลี</span>
+                </div>
+                <div class="flex justify-between items-center mb-2 text-sm border-b border-gray-700 pb-2">
+                    <span class="text-gray-400">จำนวน:</span>
+                    <span class="font-bold text-yellow-400"><span id="merchant-order-amount">0</span> หน่วย</span>
+                </div>
+                <div class="flex justify-between items-center mb-2 text-sm border-b border-gray-700 pb-2">
+                    <span class="text-gray-400">ของที่คุณมี:</span>
+                    <span class="font-bold text-blue-400"><span id="merchant-player-has">0</span> หน่วย</span>
+                </div>
+                <div class="flex justify-between items-center mt-3 text-sm">
+                    <span class="text-gray-400">ให้ราคารวม:</span>
+                    <span class="font-bold text-green-400 text-2xl"><span id="merchant-order-price">0</span> ฿</span>
+                </div>
+            </div>
+            
+            <div class="flex gap-2">
+                <button id="btn-fulfill-order" onclick="fulfillOrder()" class="bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-4 rounded-xl w-full text-md transition shadow-md">
+                    ✅ ส่งมอบผลผลิต
+                </button>
+                <button onclick="closeMerchantModal()" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-4 rounded-xl w-1/3 text-sm transition shadow-md">ปิด</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal วิธีการเล่น -->
+    <div id="how-to-play-modal" class="fixed inset-0 bg-black/80 flex justify-center items-center opacity-0 pointer-events-none transition-opacity duration-300 z-[100]">
+        <div class="bg-gray-800 border border-gray-600 rounded-2xl p-6 max-w-md w-full text-left shadow-2xl transform scale-95 transition-transform duration-300">
+            <h3 class="text-3xl font-bold text-yellow-400 mb-4 text-center">📖 คำแนะนำการเล่น</h3>
+            <ul class="text-white space-y-3 mb-6 text-sm">
+                <li class="flex gap-2"><span>1.</span> <span><b>จุดเริ่มต้น:</b> คุณมีเงินทุน 1,000 ฿ พร้อมแปลงเกษตรฟรี 1 แปลง และศูนย์บัญชาการ(โรงนา) 1 หลัง</span></li>
+                <li class="flex gap-2"><span>2.</span> <span><b>ส่งหุ่นยนต์ทำงาน:</b> คลิกที่แปลงเพื่อส่งหุ่นยนต์ไป <b>ปลูก</b> (เสียเงินค่าเมล็ด) หรือส่งไป <b>เก็บเกี่ยว</b> (เมื่อพืชโต 100%)</span></li>
+                <li class="flex gap-2"><span>3.</span> <span><b>ซื้อหุ่นยนต์เพิ่ม:</b> เข้าไปที่เมนู "คลัง & ร้านค้า" เพื่อซื้อหุ่นยนต์เพิ่ม ให้ทำงานได้หลายแปลงพร้อมกัน</span></li>
+                <li class="flex gap-2"><span>4.</span> <span><b>ขยายอาณาจักร:</b> แปลงที่มีรั้วสีเทา 🔒 คือแปลงที่ยังไม่ได้ซื้อ คลิกเพื่อใช้เงินปลดล็อคกรรมสิทธิ์</span></li>
+                <li class="flex gap-2"><span>5.</span> <span><b>ตลาดกลาง (สูงสุดทีละ 100):</b> สามารถขายของได้ที่ตลาดกลาง แต่ขายเสร็จ ตลาดจะพักเป็นเวลา 5 นาที!</span></li>
+                <li class="flex gap-2 text-yellow-300"><span>⭐</span> <span><b>พ่อค้ารับซื้อ:</b> พ่อค้าจะขับรถมารับซื้อผลผลิตทุกๆ 2 นาที ซึ่งให้ราคาดีกว่าปกติตั้ง 20% อย่าลืมเตรียมของไว้ให้พร้อม!</span></li>
+                <li class="flex gap-2 text-orange-300"><span>🐕</span> <span><b>ระบบสัตว์เลี้ยง:</b> สามารถซื้อสุนัขเฝ้าฟาร์มได้ที่โรงนา (500 ฿) และคลิกที่ตัวสุนัขเพื่อเล่นหรือให้อาหารได้!</span></li>
+            </ul>
+            <button onclick="closeHowToPlay()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl w-full text-lg transition shadow-md">เข้าใจแล้ว ลุยเลย!</button>
+        </div>
+    </div>
+
+    <!-- Modal จัดสรรรถปลูกพืช -->
+    <div id="car-select-modal" class="fixed inset-0 bg-black/80 flex justify-center items-center opacity-0 pointer-events-none transition-opacity duration-300 z-[100]">
+        <div class="bg-gray-800 border border-gray-600 rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl transform scale-95 transition-transform duration-300">
+            <h3 id="car-select-title" class="text-2xl font-bold text-white mb-1">🎯 จัดสรรหุ่นยนต์ออโต้</h3>
+            <p id="car-select-subtitle" class="text-yellow-400 font-bold mb-2 text-lg">แปลงที่ X</p>
+            
+            <div id="car-select-custom-ui" class="mb-4"></div>
+
+            <div id="car-select-options" class="space-y-2 max-h-[40vh] overflow-y-auto pr-1"></div>
+            
+            <div class="flex gap-2 mt-5">
+                <button onclick="unassignPlotCars()" class="bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 px-4 rounded-xl flex-1 text-sm transition shadow-md">ถอนหุ่นยนต์กลับ</button>
+                <button onclick="closeCarSelect()" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2.5 px-4 rounded-xl flex-1 text-sm transition shadow-md">ยกเลิก</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal ซื้อแปลงปลูกพืชใหม่ -->
+    <div id="buy-plot-modal" class="fixed inset-0 bg-black/80 flex justify-center items-center opacity-0 pointer-events-none transition-opacity duration-300 z-[100]">
+        <div class="bg-gray-800 border border-gray-600 rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl transform scale-95 transition-transform duration-300">
+            <div class="text-5xl mb-2">🔒</div>
+            <h3 class="text-2xl font-bold text-white mb-1">ซื้อพื้นที่แปลงใหม่</h3>
+            <p id="buy-plot-subtitle" class="text-yellow-400 font-bold mb-4 text-lg">แปลงฟาร์ม</p>
+
+            <div class="bg-gray-900 border border-gray-700 p-4 rounded-xl mb-5 text-left flex justify-between items-center">
+                <span class="text-gray-400">ราคาซื้อที่ดิน:</span>
+                <span class="font-bold text-green-400 text-xl"><span id="buy-plot-price">500,000</span> ฿</span>
+            </div>
+            
+            <div class="flex gap-2 mt-5">
+                <button id="btn-confirm-buy-plot" onclick="confirmBuyPlot()" class="bg-green-600 hover:bg-green-500 text-white font-bold py-2.5 px-4 rounded-xl flex-1 text-sm transition shadow-md">✅ ซื้อแปลงนี้</button>
+                <button onclick="closeBuyPlotModal()" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2.5 px-4 rounded-xl flex-1 text-sm transition shadow-md">ยกเลิก</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal ระบบขายระบุจำนวน -->
+    <div id="sell-modal" class="fixed inset-0 bg-black/80 flex justify-center items-center opacity-0 pointer-events-none transition-opacity duration-300 z-[100]">
+        <div class="bg-gray-800 border border-gray-600 rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl transform scale-95 transition-transform duration-300">
+            <div id="sell-icon" class="text-5xl mb-2">🌾</div>
+            <h3 class="text-2xl font-bold text-white mb-1">ขายผลผลิต</h3>
+            <p id="sell-crop-name" class="text-yellow-400 font-bold mb-4 text-lg">ข้าวโอ๊ต</p>
+
+            <div class="bg-gray-900 border border-gray-700 p-4 rounded-xl mb-5 text-left">
+                <div class="flex justify-between items-center mb-2 text-sm border-b border-gray-700 pb-2">
+                    <span class="text-gray-400">ราคาต่อหน่วย:</span>
+                    <span class="font-bold text-green-400"><span id="sell-unit-price">5</span> ฿</span>
+                </div>
+                <div class="flex justify-between items-center mb-2 text-sm border-b border-gray-700 pb-2">
+                    <span class="text-gray-400">ขายได้สูงสุดรอบนี้:</span>
+                    <span class="font-bold text-yellow-400"><span id="sell-max-amount">0</span></span>
+                </div>
+                <div class="mt-3">
+                    <label class="text-sm text-gray-400 block mb-1">ระบุจำนวนที่ต้องการขาย:</label>
+                    <input type="number" id="sell-amount-input" class="w-full bg-gray-800 text-white border border-gray-600 rounded-lg p-2 text-center text-lg font-bold outline-none focus:border-green-500 transition-colors" min="1" value="1" oninput="updateSellTotal()">
+                </div>
+                <div class="flex justify-between items-center mt-4 text-sm bg-gray-800 p-2 rounded-lg border border-gray-700">
+                    <span class="text-gray-400">ยอดรวมที่จะได้รับ:</span>
+                    <span class="font-bold text-green-400 text-lg"><span id="sell-total-price">0</span> ฿</span>
+                </div>
+            </div>
+            
+            <div class="flex gap-2 mt-5">
+                <button id="btn-confirm-sell" onclick="confirmSell()" class="bg-green-600 hover:bg-green-500 text-white font-bold py-2.5 px-4 rounded-xl flex-1 text-sm transition shadow-md">💰 ขายรับเงิน</button>
+                <button onclick="closeSellModal()" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2.5 px-4 rounded-xl flex-1 text-sm transition shadow-md">ยกเลิก</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal โรงนา -->
+    <div id="silo-modal" class="fixed inset-0 bg-black/80 flex justify-center items-center opacity-0 pointer-events-none transition-opacity duration-300 z-[100]">
+        <div class="bg-gray-800 border border-gray-600 rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl transform scale-95 transition-transform duration-300">
+            <div class="text-5xl mb-2">🏡</div>
+            <h3 class="text-2xl font-bold text-white mb-1">ศูนย์บัญชาการ & โรงนา</h3>
+            <p class="text-gray-300 mb-4 text-sm">ซื้อที่เก็บเพิ่มเพื่อรองรับผลผลิตที่มากขึ้น!</p>
+            
+            <div class="bg-gray-900 border border-gray-700 p-4 rounded-xl mb-5 text-left">
+                <div class="flex justify-between items-center mb-2 text-sm border-b border-gray-700 pb-2">
+                    <span class="text-gray-400">อาคารโรงนาที่มี:</span>
+                    <span class="font-bold text-yellow-400"><span id="silo-count-display">1</span> / 10 หลัง</span>
+                </div>
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-gray-400">ความจุผลผลิตสูงสุด:</span>
+                    <span class="font-bold text-green-400"><span id="silo-capacity-display">500</span> หน่วย</span>
+                </div>
+            </div>
+            
+            <button id="btn-buy-silo" onclick="buySilo()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl w-full text-md transition shadow-md mb-2 flex justify-between items-center">
+                <span>➕ ซื้อที่เก็บเพิ่ม 1 หลัง</span>
+                <span class="text-yellow-200">5,000 ฿</span>
+            </button>
+            
+            <!-- ปุ่มซื้อน้องหมา -->
+            <button id="btn-buy-dog" onclick="buyDog()" class="bg-orange-600 hover:bg-orange-500 text-white font-bold py-3 px-4 rounded-xl w-full text-md transition shadow-md mb-4 flex justify-between items-center">
+                <span>🐕 ซื้อน้องหมาเฝ้าฟาร์ม</span>
+                <span class="text-yellow-200">500 ฿</span>
+            </button>
+            
+            <button onclick="closeSiloModal()" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2.5 px-4 rounded-xl w-full text-sm transition shadow-md">ปิดหน้าต่าง</button>
+        </div>
+    </div>
+    
+    <!-- Modal น้องหมา -->
+    <div id="dog-modal" class="fixed inset-0 bg-black/80 flex justify-center items-center opacity-0 pointer-events-none transition-opacity duration-300 z-[100]">
+        <div class="bg-orange-900 border border-orange-600 rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl transform scale-95 transition-transform duration-300">
+            <div class="text-5xl mb-2">🐕</div>
+            <h3 class="text-2xl font-bold text-white mb-1">น้องหมาเฝ้าฟาร์ม</h3>
+            <p class="text-orange-200 mb-4 text-sm">เล่นกับน้อง หรือให้อาหารน้องสิ!</p>
+            
+            <div class="bg-orange-950 border border-orange-800 p-4 rounded-xl mb-5 text-left">
+                <div class="flex justify-between items-center mb-2 text-sm border-b border-orange-800 pb-2">
+                    <span class="text-gray-300">ความสุข:</span>
+                    <span class="font-bold text-pink-400"><span id="dog-happy">100</span>%</span>
+                </div>
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-gray-300">ความอิ่ม (หิว):</span>
+                    <span class="font-bold text-green-400"><span id="dog-hunger">100</span>%</span>
+                </div>
+            </div>
+            
+            <button onclick="playWithDog()" class="bg-pink-600 hover:bg-pink-500 text-white font-bold py-2.5 px-4 rounded-xl w-full text-md transition shadow-md mb-2">
+                🎾 เล่นกับน้อง
+            </button>
+            <button onclick="feedDog()" class="bg-green-600 hover:bg-green-500 text-white font-bold py-2.5 px-4 rounded-xl w-full text-md transition shadow-md mb-4">
+                🍖 ให้อาหาร (50 ฿)
+            </button>
+            
+            <button onclick="closeDogModal()" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2.5 px-4 rounded-xl w-full text-sm transition shadow-md">ปิดหน้าต่าง</button>
+        </div>
+    </div>
+
+    <!-- Modal แจ้งเตือน -->
+    <div id="message-modal" class="fixed inset-0 bg-black/80 flex justify-center items-center opacity-0 pointer-events-none transition-opacity duration-300 z-[100]">
+        <div class="bg-gray-800 border border-gray-600 rounded-xl p-6 max-w-sm w-full text-center shadow-2xl transform scale-95 transition-transform duration-300" id="message-content">
+            <div id="message-icon" class="text-5xl mb-4">💰</div>
+            <h3 id="message-title" class="text-2xl font-bold text-white mb-2">สำเร็จ!</h3>
+            <p id="message-text" class="text-gray-300 mb-6">ข้อความจำลอง</p>
+            <button onclick="closeMessage()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg transition w-full shadow-md">ตกลง</button>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // AUDIO SYSTEM (Web Audio API & BGM)
+        // ย้ายไว้บนสุดเพื่อให้โหลดพร้อมใช้งานได้ทันที
+        // ==========================================
+        let audioCtx;
+        let isMuted = false;
+
+        function initAudio() {
+            try {
+                if(!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if(audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                const bgm = document.getElementById('bgm');
+                bgm.volume = 0.3;
+                if(!isMuted) {
+                    bgm.play().catch(e => {
+                        console.log("บราวเซอร์บล็อก Auto-play ระบบรอการคลิกจากผู้ใช้", e);
+                        document.body.addEventListener('click', function playOnFirstClick() {
+                            if(!isMuted) bgm.play();
+                            document.body.removeEventListener('click', playOnFirstClick);
+                        }, { once: true });
+                    });
+                }
+            } catch (e) {
+                console.warn("Audio System Error:", e);
+            }
+        }
+
+        function toggleMute() {
+            isMuted = !isMuted;
+            const bgm = document.getElementById('bgm');
+            const btn = document.getElementById('btn-mute');
+            if(isMuted) {
+                bgm.pause();
+                btn.innerHTML = '🔇 ปิดเสียง';
+                btn.classList.replace('bg-green-600', 'bg-gray-600');
+            } else {
+                bgm.play();
+                btn.innerHTML = '🔊 เปิดเสียง';
+                btn.classList.replace('bg-gray-600', 'bg-green-600');
+            }
+            sfx.click();
+        }
+
+        function playTone(freq, type, duration, vol=0.1) {
+            try {
+                if(!audioCtx || isMuted || audioCtx.state === 'suspended') return;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch(e) {
+                // ข้ามการแจ้ง Error กรณีผู้เล่นยังไม่ได้โต้ตอบกับหน้าจอ
+            }
+        }
+
+        const sfx = {
+            click: () => playTone(600, 'sine', 0.1),
+            buy: () => { playTone(800, 'sine', 0.1); setTimeout(()=>playTone(1200, 'sine', 0.2), 100); },
+            error: () => playTone(150, 'sawtooth', 0.3, 0.2),
+            harvest: () => playTone(300, 'square', 0.1, 0.02),
+            dog: () => { playTone(500, 'square', 0.1, 0.05); setTimeout(()=>playTone(600, 'square', 0.1, 0.05), 100); },
+            alert: () => { playTone(400, 'square', 0.2); setTimeout(()=>playTone(600, 'square', 0.2), 200); }
+        };
+
+        // ==========================================
+        // GAME LOGIC & STATE
+        // ==========================================
+        const PLOT_SIZE = 15;  
+        const PLOTS_X = 3;     
+        const PLOTS_Z = 3;     
+        const GAP = 2;         
+
+        const COLS = (PLOTS_X * PLOT_SIZE) + ((PLOTS_X - 1) * GAP); 
+        const ROWS = (PLOTS_Z * PLOT_SIZE) + ((PLOTS_Z - 1) * GAP); 
+
+        let siloCount = 1;
+        const MAX_SILOS = 10;
+        const SILO_CAPACITY = 500; 
+        const SILO_COST = 5000; 
+        let isStorageFullNotified = false; 
+
+        let ownedPlots = [true, false, false, false, true, false, false, false, false]; 
+        
+        const PLOT_PRICES = {
+            1: 1000,
+            2: 10000,
+            3: 100000,
+            5: 1000000,
+            6: 10000000,
+            7: 100000000,
+            8: 1000000000
+        };
+
+        const PRICES = { oat: 5, wheat: 10, barley: 30, corn: 80, soybean: 200 };
+        const SEED_COSTS = { oat: 500, wheat: 800, barley: 1200, corn: 2000, soybean: 3000 };
+        
+        let inventory = { money: 1000, oat: 0, wheat: 0, barley: 0, corn: 0, soybean: 0 };
+        
+        let isInMenu = true;
+        let isFarmActive = false; 
+        let isPaused = false;     
+        let isPanelOpen = false;
+        
+        const CAR_TYPES = {
+            auto_basic: { id: 'auto_basic', name: 'ออโต้มาตรฐาน', cost: 30000, speed: 1.8, color: 0xeab308, icon: '🤖' },
+            auto_fast: { id: 'auto_fast', name: 'ออโต้สปีดซิ่ง', cost: 60000, speed: 2.8, color: 0x3b82f6, icon: '🏎️' },
+            auto_turbo: { id: 'auto_turbo', name: 'ออโต้เทอร์โบ', cost: 100000, speed: 4.2, color: 0xef4444, icon: '⚡' }
+        };
+
+        let ownedCars = { auto_basic: 1, auto_fast: 0, auto_turbo: 0 };
+        let activeCars = [];
+        let boardLogical = []; 
+        let growthLogical = []; 
+        let labelGrid = [];     
+        let selectedPlotIndex = null;
+        let buyingPlotIndex = null;
+        let currentSellType = null;
+        let plotMeshes = []; 
+        let plotFences = [];    
+
+        // ระบบพ่อค้า
+        let merchantTimer = 120; 
+        let isMerchantHere = false;
+        let merchantStayTimer = 0;
+        let currentOrder = null;
+        
+        // ระบบตลาดกลาง
+        let isMarketOpen = true;
+        let marketCooldownTimer = 0; 
+        
+        // ระบบหมาน้อย
+        let hasDog = false;
+        let dogGroup = null;
+        let dogData = {
+            logicalPos: { x: 0, z: 0 },
+            targetPos: null,
+            speed: 1.5,
+            hunger: 100,
+            happiness: 100
+        };
+
+        const plotNames = [
+            'แปลงฟาร์ม 1', 'แปลงฟาร์ม 2', 'แปลงฟาร์ม 3', 
+            'แปลงฟาร์ม 4', 'ศูนย์บัญชาการ (โรงนา)', 'แปลงฟาร์ม 5', 
+            'แปลงฟาร์ม 6', 'แปลงฟาร์ม 7', 'แปลงฟาร์ม 8'
+        ];
+
+        function getTotalStorage() {
+            return inventory.oat + inventory.wheat + inventory.barley + inventory.corn + inventory.soybean;
+        }
+
+        // ==========================================
+        // MENU & UI LOGIC
+        // ==========================================
+        function initMenu() {
+            document.getElementById('menu-money').innerText = inventory.money.toLocaleString();
+            if (isFarmActive) {
+                document.getElementById('resume-container').classList.remove('hidden');
+                document.getElementById('start-btn-group').classList.add('hidden');
+            } else {
+                document.getElementById('resume-container').classList.add('hidden');
+                document.getElementById('start-btn-group').classList.remove('hidden');
+            }
+            updateUI();
+        }
+
+        function startGame() {
+            initAudio();
+            sfx.click();
+            isFarmActive = true;
+            isPaused = false;
+            showGameScreen();
+            generateMap();
+            updateUI();
+            updateMerchantUI();
+            updateMarketUI();
+        }
+
+        function resumeGame() {
+            initAudio();
+            sfx.click();
+            showGameScreen();
+            updateMerchantUI();
+            updateMarketUI();
+        }
+
+        function showGameScreen() {
+            document.getElementById('main-menu').style.display = 'none';
+            document.getElementById('canvas-container').style.display = 'block';
+            document.getElementById('btn-toggle-panel').style.display = 'block';
+            document.getElementById('top-hud').style.display = 'flex'; 
+            document.getElementById('ui-panel').style.display = 'flex';
+            isInMenu = false;
+
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            renderer.setSize(width, height);
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+        }
+
+        function returnToMenu() {
+            sfx.click();
+            isInMenu = true;
+            document.getElementById('main-menu').style.display = 'flex';
+            document.getElementById('canvas-container').style.display = 'none';
+            document.getElementById('btn-toggle-panel').style.display = 'none';
+            document.getElementById('top-hud').style.display = 'none'; 
+            document.getElementById('ui-panel').style.display = 'none';
+            document.getElementById('merchant-hud').style.display = 'none';
+            if (isPanelOpen) togglePanel();
+            closeCarSelect();
+            closeBuyPlotModal();
+            closeSellModal();
+            closeSiloModal();
+            closeMerchantModal();
+            closeDogModal();
+            initMenu();
+        }
+
+        function togglePanel() {
+            sfx.click();
+            const panel = document.getElementById('ui-panel');
+            isPanelOpen = !isPanelOpen;
+            if (isPanelOpen) {
+                panel.classList.remove('-translate-x-full');
+            } else {
+                panel.classList.add('-translate-x-full');
+            }
+        }
+
+        function togglePause() {
+            sfx.click();
+            isPaused = !isPaused;
+            const btn = document.getElementById('btn-pause');
+            if(isPaused) {
+                btn.innerHTML = '▶️ ทำงานต่อ';
+                btn.classList.replace('bg-blue-600', 'bg-red-600');
+            } else {
+                btn.innerHTML = '⏸️ หยุดระบบ';
+                btn.classList.replace('bg-red-600', 'bg-blue-600');
+            }
+        }
+
+        function openHowToPlay() {
+            sfx.click();
+            const modal = document.getElementById('how-to-play-modal');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            modal.children[0].classList.replace('scale-95', 'scale-100');
+        }
+
+        function closeHowToPlay() {
+            sfx.click();
+            const modal = document.getElementById('how-to-play-modal');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            modal.children[0].classList.replace('scale-100', 'scale-95');
+        }
+
+        function buyCar(key) {
+            const car = CAR_TYPES[key];
+            if (inventory.money >= car.cost) {
+                inventory.money -= car.cost;
+                ownedCars[key]++;
+                
+                if (isFarmActive) {
+                    let carGroup = createCarModel(car.color);
+                    carGroup.visible = false; 
+                    scene.add(carGroup);
+                    
+                    activeCars.push({
+                        id: Date.now() + Math.random(),
+                        type: key,
+                        group: carGroup,
+                        logicalPos: { x: 0, z: 0 },
+                        nextStep: null,
+                        targetPos: null,
+                        speed: car.speed,
+                        assignedPlot: null,
+                        jobType: 'harvest',
+                        targetCrop: null
+                    });
+                }
+                
+                updateUI();
+                sfx.buy();
+                showMessage('ซื้อหุ่นยนต์สำเร็จ!', `คุณได้ซื้อ <span class="text-yellow-400">${car.name}</span> ${car.icon} เข้าสู่คลังพร้อมใช้งาน!`, car.icon);
+            } else {
+                sfx.error();
+                showMessage('เงินไม่พอ!', `ต้องการเงินเพิ่มอีก <span class="text-red-400">${(car.cost - inventory.money).toLocaleString()} ฿</span>`, '❌');
+            }
+        }
+
+        function buySilo() {
+            if (siloCount >= MAX_SILOS) {
+                sfx.error();
+                showMessage('พื้นที่เต็มแล้ว!', 'โรงนาของคุณขยายเต็มพื้นที่ 10 หลังแล้ว', '❌');
+                return;
+            }
+            if (inventory.money >= SILO_COST) {
+                inventory.money -= SILO_COST;
+                spawnSiloMesh(siloCount);
+                siloCount++;
+                
+                updateUI();
+                sfx.buy();
+                
+                document.getElementById('silo-count-display').innerText = siloCount;
+                document.getElementById('silo-capacity-display').innerText = (siloCount * SILO_CAPACITY).toLocaleString();
+                
+                if (siloCount >= MAX_SILOS) {
+                    document.getElementById('btn-buy-silo').classList.add('opacity-50', 'cursor-not-allowed');
+                    document.getElementById('btn-buy-silo').disabled = true;
+                }
+
+                showMessage('สำเร็จ!', 'สร้างโรงนาเพิ่มแล้ว หุ่นยนต์กลับมาทำงานต่อทันที!', '🏡');
+            } else {
+                sfx.error();
+                showMessage('เงินไม่พอ!', `ต้องการเงินอีก ${(SILO_COST - inventory.money).toLocaleString()} ฿`, '❌');
+            }
+        }
+        
+        function buyDog() {
+            if (hasDog) {
+                sfx.error();
+                showMessage('มีน้องหมาแล้ว!', 'คุณมีน้องหมาเฝ้าฟาร์มอยู่แล้ว 1 ตัว', '🐕');
+                return;
+            }
+            if (inventory.money >= 500) {
+                inventory.money -= 500;
+                hasDog = true;
+                spawnDog();
+                updateUI();
+                sfx.buy();
+                closeSiloModal();
+                showMessage('สำเร็จ!', 'คุณได้รับน้องหมาเฝ้าฟาร์มแล้ว! ลองคลิกที่น้องเพื่อเล่นด้วยสิ!', '🐕');
+            } else {
+                sfx.error();
+                showMessage('เงินไม่พอ!', `ต้องการเงินอีก ${(500 - inventory.money).toLocaleString()} ฿`, '❌');
+            }
+        }
+
+        function spawnDog() {
+            if(!dogGroup) {
+                dogGroup = createDogModel();
+                envGroup.add(dogGroup);
+            }
+            let startX = 1 * (PLOT_SIZE + GAP) + (PLOT_SIZE / 2);
+            let startZ = 1 * (PLOT_SIZE + GAP) + (PLOT_SIZE / 2) + 2; 
+            
+            dogGroup.position.set(startX, 0, startZ);
+            dogData.logicalPos = { x: startX, z: startZ };
+            dogGroup.visible = true;
+        }
+
+        function openDogModal() {
+            sfx.dog();
+            document.getElementById('dog-happy').innerText = dogData.happiness;
+            document.getElementById('dog-hunger').innerText = dogData.hunger;
+            const modal = document.getElementById('dog-modal');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            modal.children[0].classList.replace('scale-95', 'scale-100');
+        }
+
+        function closeDogModal() {
+            sfx.click();
+            const modal = document.getElementById('dog-modal');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            modal.children[0].classList.replace('scale-100', 'scale-95');
+        }
+
+        function playWithDog() {
+            sfx.dog();
+            dogData.happiness = Math.min(100, dogData.happiness + 20);
+            document.getElementById('dog-happy').innerText = dogData.happiness;
+            
+            if (dogGroup) {
+                let origY = dogGroup.position.y;
+                dogGroup.position.y = origY + 0.5;
+                setTimeout(() => { if (dogGroup) dogGroup.position.y = origY; }, 200);
+            }
+        }
+
+        function feedDog() {
+            if (inventory.money >= 50) {
+                sfx.buy();
+                inventory.money -= 50;
+                dogData.hunger = Math.min(100, dogData.hunger + 30);
+                document.getElementById('dog-hunger').innerText = dogData.hunger;
+                updateUI();
+                
+                if (dogGroup) {
+                    let interval = setInterval(() => {
+                       if(dogGroup) dogGroup.rotation.y += 0.5; 
+                    }, 30);
+                    setTimeout(() => clearInterval(interval), 400);
+                }
+            } else {
+                sfx.error();
+                showMessage('เงินไม่พอ!', `ให้อาหารน้องหมาต้องใช้เงิน 50 ฿`, '❌');
+            }
+        }
+
+        // ==========================================
+        // THREE.JS SETUP
+        // ==========================================
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.Fog(0x87CEEB, 30, 110); 
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(renderer.domElement);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1.2); 
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.2); 
+        dirLight.position.set(30, 50, 30);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        dirLight.shadow.camera.left = -50;
+        dirLight.shadow.camera.right = 50;
+        dirLight.shadow.camera.top = 50;
+        dirLight.shadow.camera.bottom = -50;
+        scene.add(dirLight);
+
+        const mineGroup = new THREE.Group();
+        scene.add(mineGroup);
+        const envGroup = new THREE.Group();
+        scene.add(envGroup);
+
+        function createDogModel() {
+            const group = new THREE.Group();
+            const mat = new THREE.MeshLambertMaterial({ color: 0xc47e45 }); 
+            const darkMat = new THREE.MeshLambertMaterial({ color: 0x3e2723 });
+            
+            const body = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.25, 0.5), mat);
+            body.position.y = 0.2;
+            body.castShadow = true;
+            group.add(body);
+            
+            const head = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.25, 0.25), mat);
+            head.position.set(0, 0.35, 0.3);
+            head.castShadow = true;
+            group.add(head);
+            
+            const snout = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.1, 0.15), darkMat);
+            snout.position.set(0, 0.3, 0.45);
+            group.add(snout);
+            
+            const earGeo = new THREE.BoxGeometry(0.05, 0.15, 0.1);
+            const earL = new THREE.Mesh(earGeo, darkMat); earL.position.set(0.1, 0.5, 0.25);
+            const earR = new THREE.Mesh(earGeo, darkMat); earR.position.set(-0.1, 0.5, 0.25);
+            group.add(earL, earR);
+            
+            const tail = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.2, 0.05), mat);
+            tail.position.set(0, 0.3, -0.25);
+            tail.rotation.x = Math.PI / 4;
+            group.add(tail);
+            
+            const legGeo = new THREE.BoxGeometry(0.08, 0.2, 0.08);
+            const legFL = new THREE.Mesh(legGeo, mat); legFL.position.set(0.1, 0.1, 0.2); legFL.name = "dog_leg_fl"; legFL.castShadow = true;
+            const legFR = new THREE.Mesh(legGeo, mat); legFR.position.set(-0.1, 0.1, 0.2); legFR.name = "dog_leg_fr"; legFR.castShadow = true;
+            const legBL = new THREE.Mesh(legGeo, mat); legBL.position.set(0.1, 0.1, -0.2); legBL.name = "dog_leg_bl"; legBL.castShadow = true;
+            const legBR = new THREE.Mesh(legGeo, mat); legBR.position.set(-0.1, 0.1, -0.2); legBR.name = "dog_leg_br"; legBR.castShadow = true;
+            group.add(legFL, legFR, legBL, legBR);
+            
+            group.userData = { isDog: true };
+            group.children.forEach(c => c.userData = { isDog: true });
+            
+            return group;
+        }
+
+        function createCrop(type, x, z) {
+            const group = new THREE.Group();
+            group.userData = { x, z, type };
+            const greenMat = new THREE.MeshLambertMaterial({ color: 0x4ade80 }); 
+            const darkGreenMat = new THREE.MeshLambertMaterial({ color: 0x166534 });
+
+            if (type === 'oat' || type === 'wheat' || type === 'barley') {
+                let color = 0xd2b48c; 
+                if (type === 'wheat') color = 0xf5deb3; 
+                if (type === 'barley') color = 0xdaa520; 
+                const headMat = new THREE.MeshLambertMaterial({ color: color });
+                const positions = [ {x: -0.2, z: -0.2}, {x: 0.2, z: 0.1}, {x: -0.1, z: 0.3} ];
+                positions.forEach(pos => {
+                    const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.5, 4), greenMat);
+                    stalk.position.set(pos.x, 0.25, pos.z);
+                    stalk.castShadow = true;
+                    group.add(stalk);
+                    const head = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.06, 0.3, 5), headMat);
+                    head.position.set(pos.x, 0.65, pos.z);
+                    head.castShadow = true;
+                    group.add(head);
+                });
+            } 
+            else if (type === 'corn') {
+                const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.2, 5), greenMat);
+                stalk.position.set(0, 0.6, 0);
+                stalk.castShadow = true;
+                group.add(stalk);
+                const cornMat = new THREE.MeshLambertMaterial({ color: 0xffd700 });
+                const cob1 = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.25, 5), cornMat);
+                cob1.position.set(0.08, 0.5, 0.08);
+                cob1.rotation.z = -Math.PI / 4;
+                group.add(cob1);
+                const cob2 = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.25, 5), cornMat);
+                cob2.position.set(-0.08, 0.8, -0.08);
+                cob2.rotation.z = Math.PI / 4;
+                group.add(cob2);
+            }
+            else if (type === 'soybean') {
+                const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.4, 4), darkGreenMat);
+                stalk.position.set(0, 0.2, 0);
+                group.add(stalk);
+                const beanMat = new THREE.MeshLambertMaterial({ color: 0x9acd32 });
+                const bush = new THREE.Mesh(new THREE.DodecahedronGeometry(0.3, 0), beanMat);
+                bush.position.set(0, 0.4, 0);
+                bush.castShadow = true;
+                group.add(bush);
+            }
+            group.position.set(x, 0, z);
+            return group;
+        }
+
+        function createPlotFence(isOwned) {
+            const group = new THREE.Group();
+            
+            const fenceColor = isOwned ? 0xf8fafc : 0x475569; 
+            const railColor = isOwned ? 0xf8fafc : 0xb91c1c; 
+            
+            const postMat = new THREE.MeshLambertMaterial({ color: fenceColor });
+            const railMat = new THREE.MeshLambertMaterial({ color: railColor });
+            
+            const plotW = PLOT_SIZE - 0.2; 
+            const halfW = plotW / 2;
+            const height = 0.5;
+            const thickness = 0.15;
+            
+            const railGeoX = new THREE.BoxGeometry(plotW, 0.1, thickness/2);
+            const railGeoZ = new THREE.BoxGeometry(thickness/2, 0.1, plotW);
+            
+            const r1 = new THREE.Mesh(railGeoX, railMat); r1.position.set(0, height - 0.1, halfW); r1.castShadow = true;
+            const r2 = new THREE.Mesh(railGeoX, railMat); r2.position.set(0, height - 0.1, -halfW); r2.castShadow = true;
+            const r3 = new THREE.Mesh(railGeoZ, railMat); r3.position.set(halfW, height - 0.1, 0); r3.castShadow = true;
+            const r4 = new THREE.Mesh(railGeoZ, railMat); r4.position.set(-halfW, height - 0.1, 0); r4.castShadow = true;
+            
+            const rm1 = new THREE.Mesh(railGeoX, railMat); rm1.position.set(0, height/2 - 0.05, halfW); rm1.castShadow = true;
+            const rm2 = new THREE.Mesh(railGeoX, railMat); rm2.position.set(0, height/2 - 0.05, -halfW); rm2.castShadow = true;
+            const rm3 = new THREE.Mesh(railGeoZ, railMat); rm3.position.set(halfW, height/2 - 0.05, 0); rm3.castShadow = true;
+            const rm4 = new THREE.Mesh(railGeoZ, railMat); rm4.position.set(-halfW, height/2 - 0.05, 0); rm4.castShadow = true;
+            
+            group.add(r1, r2, r3, r4, rm1, rm2, rm3, rm4);
+            
+            const postGeo = new THREE.BoxGeometry(0.25, height, 0.25);
+            const step = plotW / 3;
+            for(let i=0; i<=3; i++) {
+                const px = -halfW + (i * step);
+                
+                const p1 = new THREE.Mesh(postGeo, postMat); p1.position.set(px, height/2, halfW); p1.castShadow = true;
+                const p2 = new THREE.Mesh(postGeo, postMat); p2.position.set(px, height/2, -halfW); p2.castShadow = true;
+                group.add(p1, p2);
+                
+                if (i > 0 && i < 3) {
+                    const p3 = new THREE.Mesh(postGeo, postMat); p3.position.set(halfW, height/2, px); p3.castShadow = true;
+                    const p4 = new THREE.Mesh(postGeo, postMat); p4.position.set(-halfW, height/2, px); p4.castShadow = true;
+                    group.add(p3, p4);
+                }
+            }
+            return group;
+        }
+
+        function createCarModel(colorHex) {
+            const carGroup = new THREE.Group();
+            const bodyMat = new THREE.MeshLambertMaterial({ color: colorHex }); 
+            
+            const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.4, 0.5), bodyMat);
+            body.position.y = 0.3;
+            body.castShadow = true;
+            carGroup.add(body);
+
+            const cabin = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.3, 0.4), new THREE.MeshLambertMaterial({ color: 0x334155 }));
+            cabin.position.set(-0.1, 0.65, 0);
+            carGroup.add(cabin);
+
+            const diggerGeo = new THREE.CylinderGeometry(0.2, 0.2, 1.4, 8);
+            diggerGeo.rotateX(Math.PI / 2); 
+            const diggerMat = new THREE.MeshLambertMaterial({ color: 0xef4444 });
+            const digger = new THREE.Mesh(diggerGeo, diggerMat);
+            digger.position.set(0.6, 0.2, 0);
+            digger.name = "harvester_header"; 
+            carGroup.add(digger);
+
+            const trackGeo = new THREE.BoxGeometry(0.9, 0.2, 0.15); 
+            const trackMat = new THREE.MeshLambertMaterial({ color: 0x1a1a1a }); 
+            
+            const leftTrack = new THREE.Mesh(trackGeo, trackMat);
+            leftTrack.position.set(0, 0.1, 0.32);
+            carGroup.add(leftTrack);
+
+            const rightTrack = new THREE.Mesh(trackGeo, trackMat);
+            rightTrack.position.set(0, 0.1, -0.32);
+            carGroup.add(rightTrack);
+
+            const gearGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.17, 8);
+            gearGeo.rotateX(Math.PI / 2);
+            const gearMat = new THREE.MeshLambertMaterial({ color: 0x666666 });
+
+            const xPositions = [0.35, 0, -0.35]; 
+            xPositions.forEach(xPos => {
+                const lGear = new THREE.Mesh(gearGeo, gearMat);
+                lGear.position.set(xPos, 0.1, 0.32);
+                lGear.name = "track_gear";
+                carGroup.add(lGear);
+                
+                const rGear = new THREE.Mesh(gearGeo, gearMat);
+                rGear.position.set(xPos, 0.1, -0.32);
+                rGear.name = "track_gear";
+                carGroup.add(rGear);
+            });
+
+            return carGroup;
+        }
+
+        function createSiloModel() {
+            const group = new THREE.Group();
+            const bodyGeo = new THREE.BoxGeometry(2.4, 2.0, 2.4);
+            const bodyMat = new THREE.MeshLambertMaterial({color: 0xb91c1c}); 
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = 1.0;
+            body.castShadow = true;
+            body.receiveShadow = true;
+
+            const roofGeo = new THREE.ConeGeometry(2.0, 1.2, 4);
+            const roofMat = new THREE.MeshLambertMaterial({color: 0x334155});
+            const roof = new THREE.Mesh(roofGeo, roofMat);
+            roof.position.y = 2.6;
+            roof.rotation.y = Math.PI / 4; 
+            roof.castShadow = true;
+
+            const doorGeo = new THREE.BoxGeometry(0.8, 1.2, 0.1);
+            const doorMat = new THREE.MeshLambertMaterial({color: 0xf8fafc});
+            const door = new THREE.Mesh(doorGeo, doorMat);
+            door.position.set(0, 0.6, 1.2); 
+
+            group.add(body);
+            group.add(roof);
+            group.add(door);
+            group.scale.set(0.85, 0.85, 0.85);
+
+            return group;
+        }
+
+        const groundGeo = new THREE.PlaneGeometry(COLS + 6, ROWS + 6);
+        const groundMat = new THREE.MeshLambertMaterial({ color: 0x3d7a26 }); 
+        const ground = new THREE.Mesh(groundGeo, groundMat);
+        ground.rotation.x = -Math.PI / 2;
+        ground.position.set(COLS/2 - 0.5, 0, ROWS/2 - 0.5); 
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        function generateMap() {
+            document.getElementById('loading').style.display = 'flex';
+            document.getElementById('loading').style.opacity = '1';
+
+            while(mineGroup.children.length > 0) mineGroup.remove(mineGroup.children[0]); 
+            while(envGroup.children.length > 0) envGroup.remove(envGroup.children[0]);
+            activeCars.forEach(c => scene.remove(c.group));
+            activeCars = [];
+            
+            if(dogGroup) scene.remove(dogGroup); 
+            
+            boardLogical = [];
+            growthLogical = [];
+            labelGrid = [];
+            document.getElementById('labels-container').innerHTML = '';
+            plotMeshes = new Array(9); 
+            plotFences = new Array(9);
+
+            scene.background = new THREE.Color(0x87CEEB);
+
+            const wallMat = new THREE.MeshLambertMaterial({ color: 0x325e1a }); 
+            for (let z = -2; z <= ROWS + 1; z++) {
+                for (let x = -2; x <= COLS + 1; x++) {
+                    if (x < 0 || x >= COLS || z < 0 || z >= ROWS) {
+                        let h = Math.random() * 3 + 2; 
+                        const wall = new THREE.Mesh(new THREE.BoxGeometry(1, h, 1), wallMat);
+                        wall.position.set(x, h/2, z);
+                        envGroup.add(wall);
+                    }
+                }
+            }
+
+            const plotCrops = ['wheat', 'corn', 'barley', 'soybean', 'empty_silo', 'wheat', 'soybean', 'corn', 'oat'];
+            
+            for (let pZ = 0; pZ < PLOTS_Z; pZ++) {
+                for (let pX = 0; pX < PLOTS_X; pX++) {
+                    let plotIndex = (pZ * PLOTS_X) + pX;
+                    let isSiloPlot = (plotIndex === 4);
+                    let color = isSiloPlot ? 0x90ee90 : 0x79553a; 
+                    
+                    const pg = new THREE.Mesh(new THREE.PlaneGeometry(PLOT_SIZE, PLOT_SIZE), new THREE.MeshLambertMaterial({ color }));
+                    pg.rotation.x = -Math.PI / 2;
+                    
+                    let cx = (pX * (PLOT_SIZE + GAP)) + (PLOT_SIZE / 2) - 0.5;
+                    let cz = (pZ * (PLOT_SIZE + GAP)) + (PLOT_SIZE / 2) - 0.5;
+                    
+                    pg.position.set(cx, 0.01, cz);
+                    pg.receiveShadow = true;
+                    envGroup.add(pg);
+                    
+                    plotMeshes[plotIndex] = pg;
+
+                    let isOwned = isSiloPlot ? true : ownedPlots[plotIndex];
+                    let fenceGroup = createPlotFence(isOwned);
+                    fenceGroup.position.set(cx, 0, cz);
+                    envGroup.add(fenceGroup);
+                    plotFences[plotIndex] = fenceGroup;
+                }
+            }
+
+            for (let z = 0; z < ROWS; z++) {
+                let row = [];
+                let gRow = [];
+                let lRow = [];
+                for (let x = 0; x < COLS; x++) {
+                    let localX = x % (PLOT_SIZE + GAP);
+                    let localZ = z % (PLOT_SIZE + GAP);
+                    
+                    if (localX < PLOT_SIZE && localZ < PLOT_SIZE) {
+                        let pX = Math.floor(x / (PLOT_SIZE + GAP));
+                        let pZ = Math.floor(z / (PLOT_SIZE + GAP));
+                        let plotIndex = (pZ * PLOTS_X) + pX; 
+                        
+                        if (plotIndex === 4) {
+                            row.push('empty');
+                            gRow.push(0); 
+                        } else {
+                            let cellType = plotCrops[plotIndex % plotCrops.length];
+                            if (Math.random() < 0.12) cellType = 'empty';
+                            row.push(cellType);
+                            if (cellType !== 'empty') {
+                                mineGroup.add(createCrop(cellType, x, z));
+                                gRow.push(100); 
+                            } else {
+                                gRow.push(0);
+                            }
+                        }
+                    } else {
+                        row.push('empty');
+                        gRow.push(0); 
+                    }
+                    lRow.push(null);
+                }
+                boardLogical.push(row);
+                growthLogical.push(gRow);
+                labelGrid.push(lRow);
+            }
+            
+            for(let i = 0; i < siloCount; i++) {
+                spawnSiloMesh(i);
+            }
+            
+            if(hasDog) spawnDog();
+
+            let carIdCounter = 0;
+            for(let key in ownedCars) {
+                for(let i = 0; i < ownedCars[key]; i++) {
+                    const car = CAR_TYPES[key];
+                    const carGroup = createCarModel(car.color);
+                    carGroup.visible = false; 
+                    scene.add(carGroup);
+
+                    activeCars.push({
+                        id: carIdCounter++,
+                        type: key,
+                        group: carGroup,
+                        logicalPos: { x: 0, z: 0 },
+                        nextStep: null,
+                        targetPos: null,
+                        speed: car.speed,
+                        assignedPlot: null,
+                        jobType: 'harvest',
+                        targetCrop: null
+                    });
+                }
+            }
+
+            camera.position.set(COLS / 2, 30, (ROWS / 2) + 20);
+            camera.lookAt(COLS / 2, 0, ROWS / 2);
+
+            setTimeout(() => { 
+                document.getElementById('loading').style.opacity = '0';
+                setTimeout(() => document.getElementById('loading').style.display = 'none', 500);
+            }, 100);
+        }
+
+        setInterval(() => {
+            if (!isFarmActive || isPaused) return;
+            for (let z = 0; z < ROWS; z++) {
+                for (let x = 0; x < COLS; x++) {
+                    if (boardLogical[z][x] !== 'empty' && growthLogical[z][x] < 100) {
+                        growthLogical[z][x] += 25; 
+                        if (growthLogical[z][x] > 100) growthLogical[z][x] = 100;
+                        
+                        let crop = mineGroup.children.find(m => m.userData.x === x && m.userData.z === z);
+                        if (crop) {
+                            let s = Math.max(0.1, growthLogical[z][x] / 100);
+                            crop.scale.set(s, s, s);
+                        }
+                    }
+                }
+            }
+        }, 30000); 
+
+        setInterval(() => {
+            if (!isFarmActive || isPaused) return;
+            
+            if (hasDog) {
+                dogData.hunger = Math.max(0, dogData.hunger - 1);
+                dogData.happiness = Math.max(0, dogData.happiness - 1);
+                if (!document.getElementById('dog-modal').classList.contains('opacity-0')) {
+                    document.getElementById('dog-hunger').innerText = dogData.hunger;
+                    document.getElementById('dog-happy').innerText = dogData.happiness;
+                }
+            }
+
+            if (!isMerchantHere) {
+                merchantTimer--;
+                if (merchantTimer <= 0) {
+                    isMerchantHere = true;
+                    merchantStayTimer = 60; 
+                    generateMerchantOrder();
+                    sfx.alert();
+                    showMessage('พ่อค้ามาถึงแล้ว!', 'พ่อค้ามีออเดอร์พิเศษมารับซื้อ ให้ราคาดี 120%!<br>กรุณาตรวจสอบออเดอร์ที่ <b>มุมขวาบน</b>!', '🤠');
+                }
+            } else {
+                merchantStayTimer--;
+                if (merchantStayTimer <= 0) {
+                    isMerchantHere = false;
+                    merchantTimer = 120; 
+                    currentOrder = null;
+                    closeMerchantModal(); 
+                }
+            }
+            updateMerchantUI();
+
+            if (!isMarketOpen) {
+                marketCooldownTimer--;
+                if (marketCooldownTimer <= 0) {
+                    isMarketOpen = true;
+                    updateMarketUI();
+                    sfx.buy();
+                    showMessage('ตลาดกลางเปิดแล้ว!', 'ตลาดกลางพร้อมรับซื้อผลผลิตอีกครั้ง!', '🏪');
+                } else {
+                    updateMarketUI();
+                }
+            }
+        }, 1000);
+
+        function updateMarketUI() {
+            const statusText = document.getElementById('market-status-text');
+            const buttons = document.querySelectorAll('.market-sell-btn');
+            
+            if (isMarketOpen) {
+                if(statusText) statusText.innerHTML = '(เปิด)';
+                if(statusText) statusText.className = 'text-[11px] text-green-400 bg-gray-900 px-2 py-0.5 rounded-full border border-gray-700';
+                
+                buttons.forEach(btn => {
+                    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    btn.disabled = false;
+                });
+            } else {
+                let m = Math.floor(marketCooldownTimer / 60);
+                let s = marketCooldownTimer % 60;
+                let timeStr = `${m}:${s.toString().padStart(2, '0')}`;
+                
+                if(statusText) statusText.innerHTML = `(ปิดพัก ${timeStr})`;
+                if(statusText) statusText.className = 'text-[11px] text-red-400 bg-gray-900 px-2 py-0.5 rounded-full border border-red-900 animate-pulse';
+                
+                buttons.forEach(btn => {
+                    btn.classList.add('opacity-50', 'cursor-not-allowed');
+                    btn.disabled = true;
+                });
+            }
+        }
+
+        function generateMerchantOrder() {
+            const crops = ['oat', 'wheat', 'barley', 'corn', 'soybean'];
+            const crop = crops[Math.floor(Math.random() * crops.length)];
+            const amount = Math.floor(Math.random() * 41) + 10;
+            const pricePerUnit = Math.floor(PRICES[crop] * 1.2); 
+            
+            currentOrder = {
+                crop: crop,
+                amount: amount,
+                pricePerUnit: pricePerUnit,
+                total: amount * pricePerUnit
+            };
+        }
+
+        function updateMerchantUI() {
+            const hud = document.getElementById('merchant-hud');
+            const status = document.getElementById('merchant-status');
+            const alertBadge = document.getElementById('merchant-alert');
+            
+            if (!isInMenu && isFarmActive) {
+                hud.style.display = 'flex';
+            } else {
+                hud.style.display = 'none';
+                return;
+            }
+
+            if (isMerchantHere) {
+                hud.classList.remove('border-yellow-500');
+                hud.classList.add('border-green-500', 'animate-bounce');
+                status.innerText = `รอรับของ! (${merchantStayTimer}s)`;
+                status.classList.replace('text-yellow-400', 'text-green-400');
+                alertBadge.classList.remove('hidden');
+            } else {
+                hud.classList.remove('border-green-500', 'animate-bounce');
+                hud.classList.add('border-yellow-500');
+                let m = Math.floor(merchantTimer / 60);
+                let s = merchantTimer % 60;
+                status.innerText = `เดินทาง: ${m}:${s.toString().padStart(2, '0')}`;
+                status.classList.replace('text-green-400', 'text-yellow-400');
+                alertBadge.classList.add('hidden');
+            }
+        }
+
+        function spawnSiloMesh(index) {
+            let col = index % 5;
+            let row = Math.floor(index / 5);
+            let pX = 1, pZ = 1; 
+            
+            let startX = pX * (PLOT_SIZE + GAP);
+            let startZ = pZ * (PLOT_SIZE + GAP);
+            
+            let localX = 1.5 + (col * 3);
+            let localZ = 4.5 + (row * 6);
+            
+            let silo = createSiloModel();
+            silo.position.set(startX + localX, 0, startZ + localZ);
+            envGroup.add(silo);
+        }
+
+        function isPlotEmpty(plotIndex) {
+            let pX = plotIndex % PLOTS_X;
+            let pZ = Math.floor(plotIndex / PLOTS_X);
+            let startX = pX * (PLOT_SIZE + GAP);
+            let endX = startX + PLOT_SIZE;
+            let startZ = pZ * (PLOT_SIZE + GAP);
+            let endZ = startZ + PLOT_SIZE;
+
+            for (let z = startZ; z < endZ; z++) {
+                for (let x = startX; x < endX; x++) {
+                    if (boardLogical[z] && boardLogical[z][x] !== 'empty') {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        // ==========================================
+        // ระบบลากหน้าจอ & คลิกเลือกแปลง
+        // ==========================================
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        
+        let isDragging = false;
+        let hasDragged = false;
+        let dragStartX = 0;
+        let dragStartY = 0;
+        let camStartX = 0;
+        let camStartZ = 0;
+
+        container.addEventListener('pointerdown', (event) => {
+            if(isInMenu || isPaused) return;
+            isDragging = true;
+            hasDragged = false;
+            dragStartX = event.clientX;
+            dragStartY = event.clientY;
+            camStartX = camera.position.x;
+            camStartZ = camera.position.z;
+        });
+
+        container.addEventListener('pointermove', (event) => {
+            if(isInMenu || isPaused || !isDragging) return;
+            const dx = event.clientX - dragStartX;
+            const dy = event.clientY - dragStartY;
+            
+            if(Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+                hasDragged = true;
+            }
+
+            if(hasDragged) {
+                camera.position.x = camStartX - (dx * 0.05);
+                camera.position.z = camStartZ - (dy * 0.05);
+            }
+        });
+
+        container.addEventListener('pointerup', (event) => {
+            if(isInMenu || isPaused) return;
+            isDragging = false;
+
+            if(!hasDragged) {
+                const rect = container.getBoundingClientRect();
+                mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+                mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+                raycaster.setFromCamera(mouse, camera);
+
+                if (hasDog && dogGroup) {
+                    const dogIntersects = raycaster.intersectObject(dogGroup, true);
+                    if (dogIntersects.length > 0) {
+                        openDogModal();
+                        return; 
+                    }
+                }
+
+                const intersects = raycaster.intersectObject(ground);
+                if (intersects.length > 0) {
+                    const intersectPoint = intersects[0].point;
+                    const targetX = Math.round(intersectPoint.x);
+                    const targetZ = Math.round(intersectPoint.z);
+
+                    if (targetX >= 0 && targetX < COLS && targetZ >= 0 && targetZ < ROWS) {
+                        let pX = Math.floor(targetX / (PLOT_SIZE + GAP));
+                        let pZ = Math.floor(targetZ / (PLOT_SIZE + GAP));
+                        let localX = targetX % (PLOT_SIZE + GAP);
+                        let localZ = targetZ % (PLOT_SIZE + GAP);
+                        
+                        if (pX >= 0 && pX < PLOTS_X && pZ >= 0 && pZ < PLOTS_Z && localX < PLOT_SIZE && localZ < PLOT_SIZE) {
+                            let plotIndex = (pZ * PLOTS_X) + pX;
+                            openPlotModal(plotIndex);
+                        }
+                    }
+                }
+            }
+        });
+
+        container.addEventListener('pointerleave', () => {
+            isDragging = false;
+        });
+
+        function openPlotModal(plotIndex) {
+            sfx.click();
+            if (plotIndex === 4) {
+                openSiloModal();
+            } else if (!ownedPlots[plotIndex]) {
+                openBuyPlotModal(plotIndex);
+            } else {
+                openCarSelectModal(plotIndex);
+            }
+        }
+
+        function openBuyPlotModal(plotIndex) {
+            buyingPlotIndex = plotIndex;
+            document.getElementById('buy-plot-subtitle').innerText = plotNames[plotIndex];
+            document.getElementById('buy-plot-price').innerText = PLOT_PRICES[plotIndex].toLocaleString();
+            
+            const btnBuy = document.getElementById('btn-confirm-buy-plot');
+            if (inventory.money < PLOT_PRICES[plotIndex]) {
+                btnBuy.classList.add('opacity-50', 'cursor-not-allowed', 'bg-gray-600');
+                btnBuy.classList.remove('bg-green-600', 'hover:bg-green-500');
+                btnBuy.disabled = true;
+            } else {
+                btnBuy.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-gray-600');
+                btnBuy.classList.add('bg-green-600', 'hover:bg-green-500');
+                btnBuy.disabled = false;
+            }
+
+            const modal = document.getElementById('buy-plot-modal');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            modal.children[0].classList.replace('scale-95', 'scale-100');
+        }
+
+        function closeBuyPlotModal() {
+            sfx.click();
+            const modal = document.getElementById('buy-plot-modal');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            modal.children[0].classList.replace('scale-100', 'scale-95');
+            buyingPlotIndex = null;
+        }
+
+        function confirmBuyPlot() {
+            if(buyingPlotIndex === null) return;
+            const price = PLOT_PRICES[buyingPlotIndex];
+            if(inventory.money >= price) {
+                sfx.buy();
+                inventory.money -= price;
+                ownedPlots[buyingPlotIndex] = true;
+                
+                if (plotFences[buyingPlotIndex]) {
+                    plotFences[buyingPlotIndex].children.forEach(c => {
+                        c.material.color.setHex(0xf8fafc); 
+                    });
+                }
+                
+                updateUI();
+                closeBuyPlotModal();
+                showMessage('ซื้อที่ดินสำเร็จ!', `คุณได้เป็นเจ้าของ <b>${plotNames[buyingPlotIndex]}</b> เรียบร้อยแล้ว!<br>พร้อมสำหรับปลูกพืช!`, '🎉');
+            } else {
+                sfx.error();
+            }
+        }
+
+        function openSiloModal() {
+            document.getElementById('silo-count-display').innerText = siloCount;
+            document.getElementById('silo-capacity-display').innerText = (siloCount * SILO_CAPACITY).toLocaleString();
+            
+            const btnBuy = document.getElementById('btn-buy-silo');
+            if (siloCount >= MAX_SILOS) {
+                btnBuy.classList.add('opacity-50', 'cursor-not-allowed');
+                btnBuy.disabled = true;
+            } else {
+                btnBuy.classList.remove('opacity-50', 'cursor-not-allowed');
+                btnBuy.disabled = false;
+            }
+            
+            const btnDog = document.getElementById('btn-buy-dog');
+            if (hasDog) {
+                btnDog.innerHTML = '<span>✔️ มีน้องหมาแล้ว</span>';
+                btnDog.classList.add('opacity-50', 'cursor-not-allowed');
+                btnDog.disabled = true;
+            }
+
+            const modal = document.getElementById('silo-modal');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            modal.children[0].classList.replace('scale-95', 'scale-100');
+        }
+
+        function closeSiloModal() {
+            sfx.click();
+            const modal = document.getElementById('silo-modal');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            modal.children[0].classList.replace('scale-100', 'scale-95');
+        }
+
+        function openCarSelectModal(plotIndex) {
+            selectedPlotIndex = plotIndex;
+            let emptyStatus = isPlotEmpty(plotIndex);
+            
+            document.getElementById('car-select-title').innerText = emptyStatus ? '🌱 จัดสรรหุ่นยนต์ (โหมดปลูก)' : '🎯 จัดสรรหุ่นยนต์ (โหมดเกี่ยว)';
+            document.getElementById('car-select-subtitle').innerText = plotNames[plotIndex];
+            
+            const customUI = document.getElementById('car-select-custom-ui');
+            if (emptyStatus) {
+                customUI.innerHTML = `
+                    <div class="mb-3 text-left">
+                        <label class="text-sm text-gray-300 font-bold">เลือกพืชที่จะลงปลูก (ราคาต่อแปลง):</label>
+                        <select id="plant-crop-select" class="w-full bg-gray-700 text-white p-2 rounded-lg mt-1 outline-none border border-gray-600 focus:border-green-500">
+                            <option value="oat">🌾 ข้าวโอ๊ต (ทุน ${SEED_COSTS.oat.toLocaleString()} ฿)</option>
+                            <option value="wheat">🌾 ข้าวสาลี (ทุน ${SEED_COSTS.wheat.toLocaleString()} ฿)</option>
+                            <option value="barley">🌾 ข้าวบาร์เลย์ (ทุน ${SEED_COSTS.barley.toLocaleString()} ฿)</option>
+                            <option value="corn">🌽 ข้าวโพด (ทุน ${SEED_COSTS.corn.toLocaleString()} ฿)</option>
+                            <option value="soybean">🫘 ถั่วเหลือง (ทุน ${SEED_COSTS.soybean.toLocaleString()} ฿)</option>
+                        </select>
+                    </div>
+                `;
+            } else {
+                customUI.innerHTML = ''; 
+            }
+
+            const optionsBox = document.getElementById('car-select-options');
+            optionsBox.innerHTML = '';
+            
+            let idleCounts = { auto_basic: 0, auto_fast: 0, auto_turbo: 0 };
+            activeCars.forEach(c => {
+                if (c.assignedPlot === null) idleCounts[c.type]++;
+            });
+
+            let workingHere = activeCars.filter(c => c.assignedPlot === plotIndex);
+            if(workingHere.length > 0) {
+                let statusDiv = document.createElement('div');
+                statusDiv.className = "bg-green-950/60 border border-green-500/40 p-2 rounded-xl text-xs text-left mb-2 text-green-300";
+                let text = "<b>หุ่นยนต์ที่กำลังทำงานแปลงนี้:</b>";
+                workingHere.forEach(c => {
+                    let jobText = c.jobType === 'plant' ? '(ปลูก)' : '(เกี่ยว)';
+                    text += `<div class="mt-0.5">${CAR_TYPES[c.type].icon} ${CAR_TYPES[c.type].name} <span class="text-gray-400 text-[10px]">${jobText}</span></div>`;
+                });
+                statusDiv.innerHTML = text;
+                optionsBox.appendChild(statusDiv);
+            }
+
+            let deployBtnText = emptyStatus ? 'ส่งลงปลูก' : 'ส่งลงเกี่ยว';
+            let deployJobType = emptyStatus ? 'plant' : 'harvest';
+
+            for(let key in CAR_TYPES) {
+                const car = CAR_TYPES[key];
+                const idleCount = idleCounts[key];
+                
+                const opt = document.createElement('div');
+                opt.className = "flex justify-between items-center bg-gray-900 p-2.5 rounded-xl border border-gray-700 text-sm";
+                opt.innerHTML = `
+                    <div class="text-left">
+                        <div class="font-bold text-white">${car.icon} ${car.name}</div>
+                        <div class="text-xs text-gray-400">ในคลังว่าง: <span class="text-yellow-400 font-bold">${idleCount}</span> ตัว</div>
+                    </div>
+                    <button onclick="deployCarToSelectedPlot('${key}', '${deployJobType}')" ${idleCount === 0 ? 'disabled class="bg-gray-700 text-gray-500 text-xs px-3 py-1.5 rounded-lg cursor-not-allowed"' : 'class="bg-blue-600 hover:bg-blue-500 text-white text-xs px-3 py-1.5 rounded-lg font-bold transition shadow-md"'}>
+                        ${deployBtnText}
+                    </button>
+                `;
+                optionsBox.appendChild(opt);
+            }
+
+            const modal = document.getElementById('car-select-modal');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            modal.children[0].classList.replace('scale-95', 'scale-100');
+        }
+
+        function deployCarToSelectedPlot(typeKey, jobType) {
+            let carToDeploy = activeCars.find(c => c.type === typeKey && c.assignedPlot === null);
+            if (carToDeploy) {
+                let targetCropValue = null;
+
+                if (jobType === 'plant') {
+                    targetCropValue = document.getElementById('plant-crop-select').value;
+                    let cost = SEED_COSTS[targetCropValue];
+                    
+                    if (inventory.money < cost) {
+                        sfx.error();
+                        showMessage('เงินไม่พอ!', `คุณต้องการเงิน <span class="text-red-400">${cost.toLocaleString()} ฿</span><br>สำหรับซื้อเมล็ดพันธุ์แปลงนี้`, '❌');
+                        return; 
+                    }
+                    sfx.buy();
+                    inventory.money -= cost;
+                    updateUI();
+                } else {
+                    sfx.click();
+                }
+
+                carToDeploy.assignedPlot = selectedPlotIndex;
+                carToDeploy.jobType = jobType;
+                
+                if (jobType === 'plant') {
+                    carToDeploy.targetCrop = targetCropValue;
+                    if(plotMeshes[selectedPlotIndex]) plotMeshes[selectedPlotIndex].material.color.setHex(0x3e2723); 
+                } else {
+                    carToDeploy.targetCrop = null;
+                    if(plotMeshes[selectedPlotIndex]) plotMeshes[selectedPlotIndex].material.color.setHex(0x79553a); 
+                }
+                
+                let pX = selectedPlotIndex % PLOTS_X;
+                let pZ = Math.floor(selectedPlotIndex / PLOTS_X);
+                let startX = pX * (PLOT_SIZE + GAP);
+                let startZ = pZ * (PLOT_SIZE + GAP);
+
+                carToDeploy.logicalPos = { x: startX, z: startZ };
+                carToDeploy.group.position.set(startX, 0, startZ);
+                carToDeploy.group.visible = true; 
+                carToDeploy.nextStep = null;
+                carToDeploy.targetPos = null;
+
+                closeCarSelect();
+                updateUI();
+            }
+        }
+
+        function unassignPlotCars() {
+            sfx.click();
+            activeCars.forEach(c => {
+                if(c.assignedPlot === selectedPlotIndex) {
+                    c.assignedPlot = null;
+                    c.group.visible = false; 
+                    c.nextStep = null;
+                    c.targetPos = null;
+                }
+            });
+            closeCarSelect();
+            updateUI();
+        }
+
+        function closeCarSelect() {
+            sfx.click();
+            const modal = document.getElementById('car-select-modal');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            modal.children[0].classList.replace('scale-100', 'scale-95');
+        }
+
+        // ==========================================
+        // SELLING SYSTEM MODAL (ตลาดกลาง)
+        // ==========================================
+        function openSellModal(type) {
+            sfx.click();
+            if (!isMarketOpen) {
+                sfx.error();
+                showMessage('ตลาดกลางปิดทำการ!', 'โปรดรอจนกว่าจะหมดเวลาพัก 5 นาที หรือรอออเดอร์พิเศษจากพ่อค้า', '🛑');
+                return;
+            }
+
+            currentSellType = type;
+            const amount = inventory[type];
+            if (amount <= 0) {
+                sfx.error();
+                showMessage('คลังว่างเปล่า', `คุณไม่มีผลผลิตนี้เหลือให้ขายเลย`, '⚠️');
+                return;
+            }
+            
+            let icon = '🌾';
+            if(type === 'corn') icon = '🌽';
+            if(type === 'soybean') icon = '🫘';
+            
+            let nameTH = type === 'oat' ? 'ข้าวโอ๊ต' : type === 'wheat' ? 'ข้าวสาลี' : type === 'barley' ? 'ข้าวบาร์เลย์' : type === 'corn' ? 'ข้าวโพด' : 'ถั่วเหลือง';
+            
+            document.getElementById('sell-icon').innerText = icon;
+            document.getElementById('sell-crop-name').innerText = nameTH;
+            document.getElementById('sell-unit-price').innerText = PRICES[type].toLocaleString();
+            
+            const maxSell = Math.min(amount, 100);
+            document.getElementById('sell-max-amount').innerText = `${maxSell.toLocaleString()} (จากทั้งหมด ${amount.toLocaleString()})`;
+            
+            const input = document.getElementById('sell-amount-input');
+            input.max = maxSell;
+            input.value = maxSell; 
+            
+            updateSellTotal();
+            
+            const modal = document.getElementById('sell-modal');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            modal.children[0].classList.replace('scale-95', 'scale-100');
+        }
+
+        function closeSellModal() {
+            sfx.click();
+            const modal = document.getElementById('sell-modal');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            modal.children[0].classList.replace('scale-100', 'scale-95');
+            currentSellType = null;
+        }
+
+        function updateSellTotal() {
+            if(!currentSellType) return;
+            const input = document.getElementById('sell-amount-input');
+            let val = parseInt(input.value);
+            if(isNaN(val) || val < 1) val = 1;
+            
+            const maxSell = Math.min(inventory[currentSellType], 100);
+            if(val > maxSell) val = maxSell;
+            
+            input.value = val; 
+            
+            const total = val * PRICES[currentSellType];
+            document.getElementById('sell-total-price').innerText = total.toLocaleString();
+        }
+
+        function confirmSell() {
+            if(!currentSellType || !isMarketOpen) return;
+            const input = document.getElementById('sell-amount-input');
+            let val = parseInt(input.value);
+            
+            const maxSell = Math.min(inventory[currentSellType], 100);
+            if(isNaN(val) || val < 1 || val > maxSell) {
+                sfx.error();
+                return; 
+            }
+            
+            sfx.buy();
+            const profit = val * PRICES[currentSellType];
+            inventory.money += profit;
+            inventory[currentSellType] -= val;
+            
+            let icon = '🌾';
+            if(currentSellType === 'corn') icon = '🌽';
+            if(currentSellType === 'soybean') icon = '🫘';
+            
+            let nameTH = currentSellType === 'oat' ? 'ข้าวโอ๊ต' : currentSellType === 'wheat' ? 'ข้าวสาลี' : currentSellType === 'barley' ? 'ข้าวบาร์เลย์' : currentSellType === 'corn' ? 'ข้าวโพด' : 'ถั่วเหลือง';
+            
+            isMarketOpen = false;
+            marketCooldownTimer = 300;
+            updateMarketUI();
+
+            updateUI();
+            closeSellModal();
+            
+            if (isStorageFullNotified && getTotalStorage() < (siloCount * SILO_CAPACITY)) {
+                showMessage('ขายสำเร็จ พื้นที่ว่างแล้ว!', `คุณขาย ${nameTH} ${val} หน่วย ได้เงิน <span class="text-green-400 font-bold">${profit.toLocaleString()} ฿</span><br><br><b>🚨 ตลาดกลางปิดพักทำการ 5 นาที!</b>`, icon);
+            } else {
+                showMessage('ขายสำเร็จ!', `คุณขาย ${nameTH} ${val} หน่วย<br>ได้รับเงิน <span class="text-green-400 font-bold">${profit.toLocaleString()} ฿</span><br><br><b>🚨 ตลาดกลางปิดพักทำการ 5 นาที!</b>`, icon);
+            }
+        }
+
+        // ==========================================
+        // MERCHANT ORDER MODAL (พ่อค้า)
+        // ==========================================
+        function openMerchantModal() {
+            sfx.click();
+            if (!isMerchantHere || !currentOrder) {
+                showMessage('พ่อค้ายังมาไม่ถึง', 'โปรดรอให้พ่อค้าเดินทางมาถึงฟาร์มก่อน', '⏳');
+                return;
+            }
+            
+            let cropNameTH = currentOrder.crop === 'oat' ? 'ข้าวโอ๊ต' : currentOrder.crop === 'wheat' ? 'ข้าวสาลี' : currentOrder.crop === 'barley' ? 'ข้าวบาร์เลย์' : currentOrder.crop === 'corn' ? 'ข้าวโพด' : 'ถั่วเหลือง';
+            let icon = '🌾';
+            if(currentOrder.crop === 'corn') icon = '🌽';
+            if(currentOrder.crop === 'soybean') icon = '🫘';
+
+            document.getElementById('merchant-order-crop').innerHTML = `${icon} ${cropNameTH}`;
+            document.getElementById('merchant-order-amount').innerText = currentOrder.amount.toLocaleString();
+            document.getElementById('merchant-order-price').innerText = currentOrder.total.toLocaleString();
+            
+            let playerHas = inventory[currentOrder.crop];
+            document.getElementById('merchant-player-has').innerText = playerHas.toLocaleString();
+            
+            const btn = document.getElementById('btn-fulfill-order');
+            if (playerHas >= currentOrder.amount) {
+                btn.disabled = false;
+                btn.className = "bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-4 rounded-xl w-full text-md transition shadow-md";
+                btn.innerText = "✅ ส่งมอบผลผลิต";
+            } else {
+                btn.disabled = true;
+                btn.className = "bg-gray-600 text-gray-400 font-bold py-3 px-4 rounded-xl w-full text-md cursor-not-allowed";
+                btn.innerText = "❌ ผลผลิตไม่พอ";
+            }
+
+            const modal = document.getElementById('merchant-modal');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            modal.children[0].classList.replace('scale-95', 'scale-100');
+        }
+
+        function closeMerchantModal() {
+            sfx.click();
+            const modal = document.getElementById('merchant-modal');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            modal.children[0].classList.replace('scale-100', 'scale-95');
+        }
+
+        function fulfillOrder() {
+            if (inventory[currentOrder.crop] >= currentOrder.amount) {
+                sfx.buy();
+                inventory[currentOrder.crop] -= currentOrder.amount;
+                inventory.money += currentOrder.total;
+                
+                isMerchantHere = false;
+                merchantTimer = 120; 
+                
+                updateUI();
+                closeMerchantModal();
+                updateMerchantUI();
+                
+                showMessage('ส่งมอบออเดอร์สำเร็จ!', `พ่อค้าพอใจมาก! คุณได้รับเงิน <span class="text-green-400 font-bold">${currentOrder.total.toLocaleString()} ฿</span>`, '🎉');
+            } else {
+                sfx.error();
+            }
+        }
+
+        // ==========================================
+        // GAME LOOP & BACKGROUND PRODUCTION
+        // ==========================================
+        const clock = new THREE.Clock();
+
+        function mineBlock(x, z) {
+            if (getTotalStorage() >= siloCount * SILO_CAPACITY) return false;
+
+            const type = boardLogical[z][x];
+            if (type !== 'empty' && growthLogical[z][x] >= 100) {
+                if (type === 'oat') inventory.oat++;
+                if (type === 'wheat') inventory.wheat++;
+                if (type === 'barley') inventory.barley++;
+                if (type === 'corn') inventory.corn++;
+                if (type === 'soybean') inventory.soybean++;
+                
+                boardLogical[z][x] = 'empty';
+                growthLogical[z][x] = 0;
+                
+                const blockToRemove = mineGroup.children.find(m => m.userData.x === x && m.userData.z === z);
+                if (blockToRemove) mineGroup.remove(blockToRemove);
+                
+                updateUI();
+                sfx.harvest();
+                return true;
+            }
+            return false;
+        }
+
+        function plantBlock(x, z, cropType) {
+            if (boardLogical[z][x] === 'empty') {
+                boardLogical[z][x] = cropType;
+                growthLogical[z][x] = 1; 
+                let crop = createCrop(cropType, x, z);
+                crop.scale.set(0.01, 0.01, 0.01); 
+                mineGroup.add(crop);
+                sfx.harvest();
+                return true;
+            }
+            return false;
+        }
+
+        function findNextTargetForCar(car) {
+            if(car.assignedPlot === null) return;
+            
+            if (car.jobType === 'harvest' && getTotalStorage() >= siloCount * SILO_CAPACITY) {
+                car.targetPos = null;
+                return;
+            }
+
+            let pX = car.assignedPlot % PLOTS_X;
+            let pZ = Math.floor(car.assignedPlot / PLOTS_X);
+
+            let startX = pX * (PLOT_SIZE + GAP);
+            let endX = startX + PLOT_SIZE;
+            let startZ = pZ * (PLOT_SIZE + GAP);
+            let endZ = startZ + PLOT_SIZE;
+
+            let closestDist = Infinity;
+            let bestTarget = null;
+
+            for (let z = startZ; z < endZ; z++) {
+                for (let x = startX; x < endX; x++) {
+                    if (car.jobType === 'harvest') {
+                        if (boardLogical[z] && boardLogical[z][x] !== 'empty' && growthLogical[z][x] >= 100) {
+                            let dx = x - car.logicalPos.x;
+                            let dz = z - car.logicalPos.z;
+                            let dist = (dx * dx) + (dz * dz);
+                            if (dist < closestDist) { closestDist = dist; bestTarget = { x, z }; }
+                        }
+                    } else if (car.jobType === 'plant') {
+                        if (boardLogical[z] && boardLogical[z][x] === 'empty') {
+                            let dx = x - car.logicalPos.x;
+                            let dz = z - car.logicalPos.z;
+                            let dist = (dx * dx) + (dz * dz);
+                            if (dist < closestDist) { closestDist = dist; bestTarget = { x, z }; }
+                        }
+                    }
+                }
+            }
+
+            if (bestTarget) {
+                car.targetPos = { x: bestTarget.x, z: bestTarget.z };
+            } else {
+                car.targetPos = null; 
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = Math.min(clock.getDelta(), 0.1);
+
+            if (isFarmActive && !isPaused) {
+                activeCars.forEach(car => {
+                    if (car.assignedPlot === null) return; 
+
+                    if (car.group.position.y > 0) {
+                        car.group.position.y = Math.max(0, car.group.position.y - delta * 2);
+                    }
+
+                    if (!car.targetPos && !car.nextStep) {
+                        findNextTargetForCar(car);
+                    }
+
+                    if (!car.nextStep && car.targetPos) {
+                        if (car.logicalPos.x !== car.targetPos.x) {
+                            car.nextStep = { x: car.logicalPos.x + Math.sign(car.targetPos.x - car.logicalPos.x), z: car.logicalPos.z };
+                        } else if (car.logicalPos.z !== car.targetPos.z) {
+                            car.nextStep = { x: car.logicalPos.x, z: car.logicalPos.z + Math.sign(car.targetPos.z - car.logicalPos.z) };
+                        } else {
+                            car.targetPos = null; 
+                            
+                            if (car.jobType === 'harvest') {
+                                if (mineBlock(car.logicalPos.x, car.logicalPos.z)) car.group.position.y = 0.15; 
+                            } else if (car.jobType === 'plant') {
+                                if (plantBlock(car.logicalPos.x, car.logicalPos.z, car.targetCrop)) car.group.position.y = 0.15; 
+                            }
+                        }
+
+                        if (car.nextStep) {
+                            if (car.nextStep.x > car.logicalPos.x) car.group.rotation.y = 0;
+                            else if (car.nextStep.x < car.logicalPos.x) car.group.rotation.y = Math.PI;
+                            else if (car.nextStep.z > car.logicalPos.z) car.group.rotation.y = -Math.PI / 2;
+                            else if (car.nextStep.z < car.logicalPos.z) car.group.rotation.y = Math.PI / 2;
+                        }
+                    }
+
+                    if (car.nextStep) {
+                        const stepSpeed = car.speed * delta;
+                        let dx = car.nextStep.x - car.group.position.x;
+                        let dz = car.nextStep.z - car.group.position.z;
+                        let dist = Math.sqrt(dx * dx + dz * dz);
+
+                        if (dist < stepSpeed) {
+                            car.group.position.x = car.nextStep.x;
+                            car.group.position.z = car.nextStep.z;
+                            car.logicalPos.x = car.nextStep.x;
+                            car.logicalPos.z = car.nextStep.z;
+                            
+                            if (car.jobType === 'harvest') {
+                                if (mineBlock(car.logicalPos.x, car.logicalPos.z)) car.group.position.y = 0.15; 
+                            } else if (car.jobType === 'plant') {
+                                if (plantBlock(car.logicalPos.x, car.logicalPos.z, car.targetCrop)) car.group.position.y = 0.15; 
+                            }
+                            car.nextStep = null;
+                        } else {
+                            car.group.position.x += (dx / dist) * stepSpeed;
+                            car.group.position.z += (dz / dist) * stepSpeed;
+                        }
+                        
+                        car.group.children.forEach(child => {
+                            if (child.name === "track_gear") child.rotation.z -= stepSpeed * 6;
+                            if (child.name === "harvester_header") child.rotation.z -= stepSpeed * 9; 
+                        });
+                    }
+                });
+
+                if (hasDog && dogGroup) {
+                    if (!dogData.targetPos) {
+                        if (Math.random() < 0.01) { 
+                            let minX = 1 * (PLOT_SIZE + GAP) + 2;
+                            let maxX = minX + PLOT_SIZE - 4;
+                            let minZ = 1 * (PLOT_SIZE + GAP) + 2;
+                            let maxZ = minZ + PLOT_SIZE - 4;
+                            
+                            dogData.targetPos = {
+                                x: minX + Math.random() * (maxX - minX),
+                                z: minZ + Math.random() * (maxZ - minZ)
+                            };
+                        }
+                    } else {
+                        let dx = dogData.targetPos.x - dogGroup.position.x;
+                        let dz = dogData.targetPos.z - dogGroup.position.z;
+                        let dist = Math.sqrt(dx*dx + dz*dz);
+                        
+                        if (dist < 0.1) {
+                            dogData.targetPos = null; 
+                        } else {
+                            let step = dogData.speed * delta;
+                            if (step > dist) step = dist;
+                            dogGroup.position.x += (dx/dist) * step;
+                            dogGroup.position.z += (dz/dist) * step;
+                            
+                            dogGroup.rotation.y = Math.atan2(dx, dz);
+                            
+                            const time = Date.now() * 0.015;
+                            dogGroup.children.forEach(child => {
+                                if(child.name === "dog_leg_fl" || child.name === "dog_leg_br") {
+                                    child.rotation.x = Math.sin(time) * 0.3;
+                                } else if(child.name === "dog_leg_fr" || child.name === "dog_leg_bl") {
+                                    child.rotation.x = Math.sin(time + Math.PI) * 0.3;
+                                }
+                            });
+                        }
+                    }
+                }
+            }
+
+            if (!isInMenu) {
+                camera.lookAt(camera.position.x, 0, camera.position.z - 15);
+                renderer.render(scene, camera);
+                
+                let rect = container.getBoundingClientRect();
+                for(let z=0; z<ROWS; z++){
+                    for(let x=0; x<COLS; x++){
+                        let label = labelGrid[z][x];
+                        if(boardLogical[z][x] !== 'empty' && growthLogical[z][x] < 100) {
+                            if(!label) {
+                                label = document.createElement('div');
+                                label.className = 'absolute text-[10px] font-bold text-white bg-black/60 px-1 rounded transform -translate-x-1/2 -translate-y-1/2 transition-none';
+                                document.getElementById('labels-container').appendChild(label);
+                                labelGrid[z][x] = label;
+                            }
+                            label.innerText = growthLogical[z][x] + '%';
+                            
+                            let pos = new THREE.Vector3(x, 1.2, z);
+                            pos.project(camera);
+                            
+                            if(pos.z < 1) { 
+                                let screenX = (pos.x * .5 + .5) * rect.width;
+                                let screenY = (pos.y * -.5 + .5) * rect.height;
+                                label.style.left = screenX + 'px';
+                                label.style.top = screenY + 'px';
+                                label.style.display = 'block';
+                            } else {
+                                label.style.display = 'none';
+                            }
+                        } else {
+                            if(label) label.style.display = 'none';
+                        }
+                    }
+                }
+            }
+        }
+
+        function updateUI() {
+            let currentTotal = getTotalStorage();
+            let maxCapacity = siloCount * SILO_CAPACITY;
+
+            document.getElementById('menu-money').innerText = inventory.money.toLocaleString();
+            document.getElementById('stat-money').innerText = inventory.money.toLocaleString();
+            document.getElementById('stat-oat').innerText = inventory.oat.toLocaleString();
+            document.getElementById('stat-wheat').innerText = inventory.wheat.toLocaleString();
+            document.getElementById('stat-barley').innerText = inventory.barley.toLocaleString();
+            document.getElementById('stat-corn').innerText = inventory.corn.toLocaleString();
+            document.getElementById('stat-soybean').innerText = inventory.soybean.toLocaleString();
+            
+            document.getElementById('hud-money').innerText = inventory.money.toLocaleString();
+            document.getElementById('hud-oat').innerText = inventory.oat.toLocaleString();
+            document.getElementById('hud-wheat').innerText = inventory.wheat.toLocaleString();
+            document.getElementById('hud-barley').innerText = inventory.barley.toLocaleString();
+            document.getElementById('hud-corn').innerText = inventory.corn.toLocaleString();
+            document.getElementById('hud-soybean').innerText = inventory.soybean.toLocaleString();
+            
+            const storageContainer = document.getElementById('hud-storage-container');
+            
+            if (currentTotal >= maxCapacity) {
+                storageContainer.classList.add('bg-red-900/80', 'border-red-500', 'animate-pulse', 'text-white');
+                storageContainer.classList.remove('bg-blue-900/60', 'border-blue-500', 'text-blue-200');
+                storageContainer.innerHTML = `⚠️ พื้นที่เก็บเต็ม! <span id="hud-storage">${currentTotal.toLocaleString()}</span> / <span id="hud-max-storage">${maxCapacity.toLocaleString()}</span>`;
+                
+                if (!isStorageFullNotified) {
+                    sfx.error();
+                    showMessage('โรงนาเต็มแล้ว!', 'หุ่นยนต์หยุดทำงานชั่วคราว<br>กรุณา <b>ขายผลผลิต</b> หรือ <b>ซื้อที่เก็บเพิ่ม</b> เพื่อทำงานต่อ!', '🛑');
+                    isStorageFullNotified = true;
+                }
+            } else {
+                storageContainer.classList.remove('bg-red-900/80', 'border-red-500', 'animate-pulse', 'text-white');
+                storageContainer.classList.add('bg-blue-900/60', 'border-blue-500', 'text-blue-200');
+                storageContainer.innerHTML = `📦 ความจุ: <span id="hud-storage">${currentTotal.toLocaleString()}</span> / <span id="hud-max-storage">${maxCapacity.toLocaleString()}</span>`;
+                
+                isStorageFullNotified = false;
+            }
+            
+            for(let key in ownedCars) {
+                const badge = document.getElementById(`count-${key}`);
+                if (badge) badge.innerText = ownedCars[key].toLocaleString();
+            }
+        }
+
+        const modal = document.getElementById('message-modal');
+        const modalContent = document.getElementById('message-content');
+        
+        function showMessage(title, text, icon = '💬') {
+            document.getElementById('message-title').innerText = title;
+            document.getElementById('message-text').innerHTML = text;
+            document.getElementById('message-icon').innerText = icon;
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            modalContent.classList.replace('scale-95', 'scale-100');
+        }
+
+        function closeMessage() {
+            sfx.click();
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            modalContent.classList.replace('scale-100', 'scale-95');
+        }
+
+        window.addEventListener('resize', () => {
+            if(isInMenu) return;
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            renderer.setSize(width, height);
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+        });
+
+        initMenu();
+        animate();
+    </script>
+</body>
+</html>
