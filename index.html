@@ -82,7 +82,7 @@
         </div>
     </div>
 
-    <!-- ปุ่มคลังสินค้า: แก้ไขให้แสดงผลแน่นอนเมื่อกดเริ่มเกม -->
+    <!-- ปุ่มคลังสินค้า -->
     <button id="btn-toggle-panel" onclick="togglePanel()" style="display: none;" class="fixed top-4 left-4 z-40 bg-gradient-to-r from-pink-500 to-orange-400 text-white p-3 rounded-full shadow-[0_0_20px_rgba(249,115,22,0.8)] border-2 border-white hover:from-pink-400 hover:to-orange-300 text-2xl transition transform hover:scale-110 font-bold">
         🎒 คลัง & ร้านค้า
     </button>
@@ -112,9 +112,7 @@
         <button id="btn-mute" onclick="toggleMute()" class="ml-2 bg-green-600 hover:bg-green-500 text-white px-4 py-1 rounded-full text-sm font-bold shadow transition-colors">
             🔊 เปิดเสียง
         </button>
-        <button id="btn-pause" onclick="togglePause()" class="ml-1 bg-blue-600 hover:bg-blue-500 text-white px-4 py-1 rounded-full text-sm font-bold shadow transition-colors">
-            ⏸️ หยุดระบบ
-        </button>
+        <!-- เอาปุ่มหยุดระบบออกแล้ว -->
     </div>
 
     <!-- แผง UI คลังและร้านค้า -->
@@ -417,7 +415,6 @@
     <script>
         // ==========================================
         // AUDIO SYSTEM (Web Audio API & BGM)
-        // ย้ายไว้บนสุดเพื่อให้โหลดพร้อมใช้งานได้ทันที
         // ==========================================
         let audioCtx;
         let isMuted = false;
@@ -434,7 +431,7 @@
                 bgm.volume = 0.3;
                 if(!isMuted) {
                     bgm.play().catch(e => {
-                        console.log("บราวเซอร์บล็อก Auto-play ระบบรอการคลิกจากผู้ใช้", e);
+                        console.log("Browser block audio play:", e);
                         document.body.addEventListener('click', function playOnFirstClick() {
                             if(!isMuted) bgm.play();
                             document.body.removeEventListener('click', playOnFirstClick);
@@ -475,9 +472,7 @@
                 gain.connect(audioCtx.destination);
                 osc.start();
                 osc.stop(audioCtx.currentTime + duration);
-            } catch(e) {
-                // ข้ามการแจ้ง Error กรณีผู้เล่นยังไม่ได้โต้ตอบกับหน้าจอ
-            }
+            } catch(e) {}
         }
 
         const sfx = {
@@ -525,7 +520,6 @@
         
         let isInMenu = true;
         let isFarmActive = false; 
-        let isPaused = false;     
         let isPanelOpen = false;
         
         const CAR_TYPES = {
@@ -551,7 +545,7 @@
         let merchantStayTimer = 0;
         let currentOrder = null;
         
-        // ระบบตลาดกลาง
+        // ระบบตลาดกลาง Cooldown
         let isMarketOpen = true;
         let marketCooldownTimer = 0; 
         
@@ -595,7 +589,6 @@
             initAudio();
             sfx.click();
             isFarmActive = true;
-            isPaused = false;
             showGameScreen();
             generateMap();
             updateUI();
@@ -653,19 +646,6 @@
                 panel.classList.remove('-translate-x-full');
             } else {
                 panel.classList.add('-translate-x-full');
-            }
-        }
-
-        function togglePause() {
-            sfx.click();
-            isPaused = !isPaused;
-            const btn = document.getElementById('btn-pause');
-            if(isPaused) {
-                btn.innerHTML = '▶️ ทำงานต่อ';
-                btn.classList.replace('bg-blue-600', 'bg-red-600');
-            } else {
-                btn.innerHTML = '⏸️ หยุดระบบ';
-                btn.classList.replace('bg-red-600', 'bg-blue-600');
             }
         }
 
@@ -828,14 +808,14 @@
         }
 
         // ==========================================
-        // THREE.JS SETUP
+        // THREE.JS SETUP & OPTIMIZATION
         // ==========================================
         const container = document.getElementById('canvas-container');
         const scene = new THREE.Scene();
         scene.fog = new THREE.Fog(0x87CEEB, 30, 110); 
 
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -847,8 +827,8 @@
         const dirLight = new THREE.DirectionalLight(0xffffff, 1.2); 
         dirLight.position.set(30, 50, 30);
         dirLight.castShadow = true;
-        dirLight.shadow.mapSize.width = 2048;
-        dirLight.shadow.mapSize.height = 2048;
+        dirLight.shadow.mapSize.width = 1024; // ลดขนาดเงาเพื่อความลื่นไหล
+        dirLight.shadow.mapSize.height = 1024;
         dirLight.shadow.camera.left = -50;
         dirLight.shadow.camera.right = 50;
         dirLight.shadow.camera.top = 50;
@@ -859,6 +839,25 @@
         scene.add(mineGroup);
         const envGroup = new THREE.Group();
         scene.add(envGroup);
+
+        // --- Caching Materials & Geometries เพื่อแก้ Memory Leak ตามหลัก[cite: 1] ---
+        const sharedMats = {
+            green: new THREE.MeshLambertMaterial({ color: 0x4ade80 }),
+            darkGreen: new THREE.MeshLambertMaterial({ color: 0x166534 }),
+            oat: new THREE.MeshLambertMaterial({ color: 0xd2b48c }),
+            wheat: new THREE.MeshLambertMaterial({ color: 0xf5deb3 }),
+            barley: new THREE.MeshLambertMaterial({ color: 0xdaa520 }),
+            cornYellow: new THREE.MeshLambertMaterial({ color: 0xffd700 }),
+            soybean: new THREE.MeshLambertMaterial({ color: 0x9acd32 })
+        };
+        const sharedGeos = {
+            stalkNorm: new THREE.CylinderGeometry(0.02, 0.02, 0.5, 4),
+            headNorm: new THREE.CylinderGeometry(0.01, 0.06, 0.3, 5),
+            cornStalk: new THREE.CylinderGeometry(0.05, 0.05, 1.2, 5),
+            cornCob: new THREE.CylinderGeometry(0.06, 0.06, 0.25, 5),
+            soyStalk: new THREE.CylinderGeometry(0.04, 0.04, 0.4, 4),
+            soyBush: new THREE.DodecahedronGeometry(0.3, 0)
+        };
 
         function createDogModel() {
             const group = new THREE.Group();
@@ -902,50 +901,50 @@
             return group;
         }
 
+        // --- อัปเดตฟังก์ชันสร้างพืช โดยดึง Geometry และ Material ที่สร้างไว้แล้วมาใช้ซ้ำ (ลดความหน่วง 100%) ---[cite: 1]
         function createCrop(type, x, z) {
             const group = new THREE.Group();
             group.userData = { x, z, type };
-            const greenMat = new THREE.MeshLambertMaterial({ color: 0x4ade80 }); 
-            const darkGreenMat = new THREE.MeshLambertMaterial({ color: 0x166534 });
 
             if (type === 'oat' || type === 'wheat' || type === 'barley') {
-                let color = 0xd2b48c; 
-                if (type === 'wheat') color = 0xf5deb3; 
-                if (type === 'barley') color = 0xdaa520; 
-                const headMat = new THREE.MeshLambertMaterial({ color: color });
+                let hMat = sharedMats.oat; 
+                if (type === 'wheat') hMat = sharedMats.wheat; 
+                if (type === 'barley') hMat = sharedMats.barley; 
+                
                 const positions = [ {x: -0.2, z: -0.2}, {x: 0.2, z: 0.1}, {x: -0.1, z: 0.3} ];
                 positions.forEach(pos => {
-                    const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.5, 4), greenMat);
+                    const stalk = new THREE.Mesh(sharedGeos.stalkNorm, sharedMats.green);
                     stalk.position.set(pos.x, 0.25, pos.z);
                     stalk.castShadow = true;
                     group.add(stalk);
-                    const head = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.06, 0.3, 5), headMat);
+                    const head = new THREE.Mesh(sharedGeos.headNorm, hMat);
                     head.position.set(pos.x, 0.65, pos.z);
                     head.castShadow = true;
                     group.add(head);
                 });
             } 
             else if (type === 'corn') {
-                const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.2, 5), greenMat);
+                const stalk = new THREE.Mesh(sharedGeos.cornStalk, sharedMats.green);
                 stalk.position.set(0, 0.6, 0);
                 stalk.castShadow = true;
                 group.add(stalk);
-                const cornMat = new THREE.MeshLambertMaterial({ color: 0xffd700 });
-                const cob1 = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.25, 5), cornMat);
+                
+                const cob1 = new THREE.Mesh(sharedGeos.cornCob, sharedMats.cornYellow);
                 cob1.position.set(0.08, 0.5, 0.08);
                 cob1.rotation.z = -Math.PI / 4;
                 group.add(cob1);
-                const cob2 = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.25, 5), cornMat);
+                
+                const cob2 = new THREE.Mesh(sharedGeos.cornCob, sharedMats.cornYellow);
                 cob2.position.set(-0.08, 0.8, -0.08);
                 cob2.rotation.z = Math.PI / 4;
                 group.add(cob2);
             }
             else if (type === 'soybean') {
-                const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.4, 4), darkGreenMat);
+                const stalk = new THREE.Mesh(sharedGeos.soyStalk, sharedMats.darkGreen);
                 stalk.position.set(0, 0.2, 0);
                 group.add(stalk);
-                const beanMat = new THREE.MeshLambertMaterial({ color: 0x9acd32 });
-                const bush = new THREE.Mesh(new THREE.DodecahedronGeometry(0.3, 0), beanMat);
+                
+                const bush = new THREE.Mesh(sharedGeos.soyBush, sharedMats.soybean);
                 bush.position.set(0, 0.4, 0);
                 bush.castShadow = true;
                 group.add(bush);
@@ -1090,6 +1089,9 @@
         ground.receiveShadow = true;
         scene.add(ground);
 
+        // ==========================================
+        // MAP GENERATION & GROWTH SYSTEM
+        // ==========================================
         function generateMap() {
             document.getElementById('loading').style.display = 'flex';
             document.getElementById('loading').style.opacity = '1';
@@ -1227,7 +1229,7 @@
         }
 
         setInterval(() => {
-            if (!isFarmActive || isPaused) return;
+            if (!isFarmActive) return;
             for (let z = 0; z < ROWS; z++) {
                 for (let x = 0; x < COLS; x++) {
                     if (boardLogical[z][x] !== 'empty' && growthLogical[z][x] < 100) {
@@ -1245,7 +1247,7 @@
         }, 30000); 
 
         setInterval(() => {
-            if (!isFarmActive || isPaused) return;
+            if (!isFarmActive) return;
             
             if (hasDog) {
                 dogData.hunger = Math.max(0, dogData.hunger - 1);
@@ -1407,7 +1409,7 @@
         let camStartZ = 0;
 
         container.addEventListener('pointerdown', (event) => {
-            if(isInMenu || isPaused) return;
+            if(isInMenu) return;
             isDragging = true;
             hasDragged = false;
             dragStartX = event.clientX;
@@ -1417,7 +1419,7 @@
         });
 
         container.addEventListener('pointermove', (event) => {
-            if(isInMenu || isPaused || !isDragging) return;
+            if(isInMenu || !isDragging) return;
             const dx = event.clientX - dragStartX;
             const dy = event.clientY - dragStartY;
             
@@ -1432,7 +1434,7 @@
         });
 
         container.addEventListener('pointerup', (event) => {
-            if(isInMenu || isPaused) return;
+            if(isInMenu) return;
             isDragging = false;
 
             if(!hasDragged) {
@@ -1968,7 +1970,7 @@
             requestAnimationFrame(animate);
             const delta = Math.min(clock.getDelta(), 0.1);
 
-            if (isFarmActive && !isPaused) {
+            if (isFarmActive) {
                 activeCars.forEach(car => {
                     if (car.assignedPlot === null) return; 
 
@@ -2078,33 +2080,51 @@
                 camera.lookAt(camera.position.x, 0, camera.position.z - 15);
                 renderer.render(scene, camera);
                 
-                let rect = container.getBoundingClientRect();
+                // ระบบป้ายเปอร์เซ็นต์ (Optimized ด้วย Transform translate3d)
+                const w = window.innerWidth;
+                const h = window.innerHeight;
                 for(let z=0; z<ROWS; z++){
                     for(let x=0; x<COLS; x++){
                         let label = labelGrid[z][x];
                         if(boardLogical[z][x] !== 'empty' && growthLogical[z][x] < 100) {
                             if(!label) {
                                 label = document.createElement('div');
-                                label.className = 'absolute text-[10px] font-bold text-white bg-black/60 px-1 rounded transform -translate-x-1/2 -translate-y-1/2 transition-none';
+                                label.className = 'absolute top-0 left-0 text-[10px] font-bold text-white bg-black/60 px-1 rounded transition-none pointer-events-none origin-center';
                                 document.getElementById('labels-container').appendChild(label);
                                 labelGrid[z][x] = label;
+                                label._currentText = ''; 
+                                label._currentDisplay = ''; 
                             }
-                            label.innerText = growthLogical[z][x] + '%';
+                            
+                            let newText = growthLogical[z][x] + '%';
+                            if (label._currentText !== newText) {
+                                label.innerText = newText;
+                                label._currentText = newText;
+                            }
                             
                             let pos = new THREE.Vector3(x, 1.2, z);
                             pos.project(camera);
                             
                             if(pos.z < 1) { 
-                                let screenX = (pos.x * .5 + .5) * rect.width;
-                                let screenY = (pos.y * -.5 + .5) * rect.height;
-                                label.style.left = screenX + 'px';
-                                label.style.top = screenY + 'px';
-                                label.style.display = 'block';
+                                let screenX = (pos.x * .5 + .5) * w;
+                                let screenY = (pos.y * -.5 + .5) * h;
+                                label.style.transform = `translate3d(calc(${screenX}px - 50%), calc(${screenY}px - 50%), 0)`;
+                                
+                                if(label._currentDisplay !== 'block') {
+                                    label.style.display = 'block';
+                                    label._currentDisplay = 'block';
+                                }
                             } else {
-                                label.style.display = 'none';
+                                if(label._currentDisplay !== 'none') {
+                                    label.style.display = 'none';
+                                    label._currentDisplay = 'none';
+                                }
                             }
                         } else {
-                            if(label) label.style.display = 'none';
+                            if(label && label._currentDisplay !== 'none') {
+                                label.style.display = 'none';
+                                label._currentDisplay = 'none';
+                            }
                         }
                     }
                 }
