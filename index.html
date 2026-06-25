@@ -41,13 +41,16 @@
         ::-webkit-scrollbar-thumb { background: #4a5568; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #718096; }
         
+        /* ซ่อน Scrollbar แนวนอนในแถบ HUD */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
         #loading {
             position: absolute; inset: 0; background: rgba(0,0,0,0.8);
             display: flex; justify-content: center; align-items: center;
             color: white; font-size: 1.5rem; z-index: 10; transition: opacity 0.5s;
         }
 
-        /* Float animation สำหรับไอเทมบนพื้น */
         @keyframes floatUp {
             0% { transform: translateY(0) scale(1); opacity: 1; }
             100% { transform: translateY(-50px) scale(1.5); opacity: 0; }
@@ -97,7 +100,7 @@
         </div>
     </div>
 
-    <button id="btn-toggle-panel" onclick="togglePanel()" style="display: none;" class="fixed top-4 left-4 z-40 bg-gradient-to-r from-pink-500 to-orange-400 text-white p-3 rounded-full shadow-[0_0_20px_rgba(249,115,22,0.8)] border-2 border-white hover:from-pink-400 hover:to-orange-300 text-2xl transition transform hover:scale-110 font-bold">
+    <button id="btn-toggle-panel" onclick="togglePanel()" style="display: none;" class="fixed top-4 left-4 z-40 bg-gradient-to-r from-pink-500 to-orange-400 text-white p-3 rounded-full shadow-[0_0_20px_rgba(249,115,22,0.8)] border-2 border-white hover:from-pink-400 hover:to-orange-300 text-xl md:text-2xl transition transform hover:scale-110 font-bold whitespace-nowrap">
         🎒 คลัง & ร้านค้า
     </button>
 
@@ -109,156 +112,161 @@
         <div id="merchant-status" class="text-xs font-bold text-yellow-400">เดินทางมาใน: 02:00</div>
     </div>
 
-    <div id="top-hud" style="display: none;" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-30 bg-gray-900/90 border border-gray-600 rounded-full px-4 md:px-8 py-2 shadow-[0_5px_15px_rgba(0,0,0,0.5)] flex-wrap justify-center gap-4 md:gap-6 items-center text-sm md:text-lg backdrop-blur-sm transition-all duration-300">
+    <div id="top-hud" style="display: none;" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-30 bg-gray-900/90 border border-gray-600 rounded-full px-4 md:px-6 py-2 shadow-[0_5px_15px_rgba(0,0,0,0.5)] flex flex-nowrap justify-start md:justify-center gap-3 md:gap-5 items-center text-xs md:text-sm backdrop-blur-sm transition-all duration-300 max-w-[95vw] overflow-x-auto whitespace-nowrap no-scrollbar">
         
-        <div id="hud-storage-container" class="text-blue-200 font-bold drop-shadow-md bg-blue-900/60 px-4 py-1 rounded-full border-2 border-blue-500 transition-all duration-300 flex items-center gap-2">
-            📦 ความจุ: <span id="hud-storage">0</span> / <span id="hud-max-storage">500</span>
+        <div id="hud-storage-container" class="text-blue-200 font-bold drop-shadow-md bg-blue-900/60 px-3 py-1 rounded-full border-2 border-blue-500 transition-all duration-300 flex items-center gap-1 shrink-0">
+            📦 <span id="hud-storage">0</span>/<span id="hud-max-storage">500</span>
         </div>
 
-        <div class="text-green-400 font-bold drop-shadow-md">฿ <span id="hud-money">0</span></div>
-        <div class="text-yellow-200 drop-shadow-md hidden md:block" title="ข้าวโอ๊ต">🌾 <span id="hud-oat">0</span></div>
-        <div class="text-yellow-400 drop-shadow-md hidden md:block" title="ข้าวสาลี">🌾 <span id="hud-wheat">0</span></div>
-        <div class="text-orange-400 drop-shadow-md hidden md:block" title="ข้าวบาร์เลย์">🌾 <span id="hud-barley">0</span></div>
-        <div class="text-yellow-500 drop-shadow-md hidden md:block" title="ข้าวโพด">🌽 <span id="hud-corn">0</span></div>
-        <div class="text-green-400 drop-shadow-md hidden md:block" title="ถั่วเหลือง">🫘 <span id="hud-soybean">0</span></div>
-        <div class="text-white drop-shadow-md hidden md:block" title="นมวัว">🥛 <span id="hud-milk">0</span></div>
-        <div class="text-orange-200 drop-shadow-md hidden md:block" title="ไข่ไก่">🥚 <span id="hud-egg">0</span></div>
+        <div class="text-green-400 font-bold drop-shadow-md shrink-0">฿ <span id="hud-money">0</span></div>
+        <div class="text-yellow-200 drop-shadow-md shrink-0" title="ข้าวโอ๊ต">🌾 <span id="hud-oat">0</span></div>
+        <div class="text-yellow-400 drop-shadow-md shrink-0" title="ข้าวสาลี">🌾 <span id="hud-wheat">0</span></div>
+        <div class="text-orange-400 drop-shadow-md shrink-0" title="ข้าวบาร์เลย์">🌾 <span id="hud-barley">0</span></div>
+        <div class="text-yellow-500 drop-shadow-md shrink-0" title="ข้าวโพด">🌽 <span id="hud-corn">0</span></div>
+        <div class="text-green-400 drop-shadow-md shrink-0" title="ถั่วเหลือง">🫘 <span id="hud-soybean">0</span></div>
+        <div class="text-white drop-shadow-md shrink-0" title="นมวัว">🥛 <span id="hud-milk">0</span></div>
+        <div class="text-orange-200 drop-shadow-md shrink-0" title="ไข่ไก่">🥚 <span id="hud-egg">0</span></div>
         
-        <button id="btn-mute" onclick="toggleMute()" class="ml-2 bg-green-600 hover:bg-green-500 text-white px-4 py-1 rounded-full text-sm font-bold shadow transition-colors">
+        <button id="btn-mute" onclick="toggleMute()" class="ml-1 shrink-0 bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow transition-colors">
             🔊 เปิดเสียง
         </button>
     </div>
 
-    <div id="ui-panel" style="display: none;" class="fixed top-0 left-0 h-full w-80 bg-gray-800 p-6 shadow-[5px_0_25px_rgba(0,0,0,0.7)] border-r border-gray-700 z-50 transform -translate-x-full transition-transform duration-300 flex flex-col overflow-y-auto">
-        <button onclick="togglePanel()" class="absolute top-2 right-4 text-gray-400 hover:text-white text-4xl font-bold">&times;</button>
+    <div id="ui-panel" style="display: none;" class="fixed top-0 left-0 h-full w-80 bg-gray-800 p-6 pb-8 shadow-[5px_0_25px_rgba(0,0,0,0.7)] border-r border-gray-700 z-50 transform -translate-x-full transition-transform duration-300 flex flex-col overflow-y-auto">
+        <button onclick="togglePanel()" class="absolute top-2 right-4 text-gray-400 hover:text-white text-4xl font-bold z-10">&times;</button>
         
-        <h2 class="text-xl font-semibold mb-4 text-white border-b border-gray-600 pb-2 pr-8">📦 คลังสะสมผลผลิต</h2>
-        <div class="mb-4">
-            <div class="bg-gray-900 p-3 rounded-lg text-center border border-green-500/30 shadow-inner">
-                <div class="text-gray-400 text-xs mb-1">ยอดเงินสะสม</div>
-                <div class="text-2xl font-bold text-green-400">฿ <span id="stat-money">0</span></div>
+        <div class="flex-none">
+            <h2 class="text-xl font-semibold mb-4 text-white border-b border-gray-600 pb-2 pr-8">📦 คลังสะสมผลผลิต</h2>
+            <div class="mb-4">
+                <div class="bg-gray-900 p-3 rounded-lg text-center border border-green-500/30 shadow-inner">
+                    <div class="text-gray-400 text-xs mb-1">ยอดเงินสะสม</div>
+                    <div class="text-2xl font-bold text-green-400">฿ <span id="stat-money">0</span></div>
+                </div>
             </div>
-        </div>
 
-        <div class="space-y-2 mb-4 max-h-[25vh] overflow-y-auto pr-1">
-            <div class="flex justify-between items-center bg-gray-700/50 p-2 rounded-lg border-l-4 border-yellow-200 text-sm">
-                <span>🌾 ข้าวโอ๊ต</span> <span class="font-bold text-yellow-200" id="stat-oat">0</span>
+            <div class="space-y-2 mb-4 pr-1">
+                <div class="flex justify-between items-center bg-gray-700/50 p-2 rounded-lg border-l-4 border-yellow-200 text-sm">
+                    <span>🌾 ข้าวโอ๊ต</span> <span class="font-bold text-yellow-200" id="stat-oat">0</span>
+                </div>
+                <div class="flex justify-between items-center bg-gray-700/50 p-2 rounded-lg border-l-4 border-yellow-400 text-sm">
+                    <span>🌾 ข้าวสาลี</span> <span class="font-bold text-yellow-400" id="stat-wheat">0</span>
+                </div>
+                <div class="flex justify-between items-center bg-gray-700/50 p-2 rounded-lg border-l-4 border-orange-400 text-sm">
+                    <span>🌾 บาร์เลย์</span> <span class="font-bold text-orange-400" id="stat-barley">0</span>
+                </div>
+                <div class="flex justify-between items-center bg-gray-700/50 p-2 rounded-lg border-l-4 border-yellow-500 text-sm">
+                    <span>🌽 ข้าวโพด</span> <span class="font-bold text-yellow-500" id="stat-corn">0</span>
+                </div>
+                <div class="flex justify-between items-center bg-gray-700/50 p-2 rounded-lg border-l-4 border-green-400 text-sm">
+                    <span>🫘 ถั่วเหลือง</span> <span class="font-bold text-green-400" id="stat-soybean">0</span>
+                </div>
+                <div class="flex justify-between items-center bg-gray-700/50 p-2 rounded-lg border-l-4 border-white text-sm">
+                    <span>🥛 นมวัว</span> <span class="font-bold text-white" id="stat-milk">0</span>
+                </div>
+                <div class="flex justify-between items-center bg-gray-700/50 p-2 rounded-lg border-l-4 border-orange-200 text-sm">
+                    <span>🥚 ไข่ไก่</span> <span class="font-bold text-orange-200" id="stat-egg">0</span>
+                </div>
             </div>
-            <div class="flex justify-between items-center bg-gray-700/50 p-2 rounded-lg border-l-4 border-yellow-400 text-sm">
-                <span>🌾 ข้าวสาลี</span> <span class="font-bold text-yellow-400" id="stat-wheat">0</span>
-            </div>
-            <div class="flex justify-between items-center bg-gray-700/50 p-2 rounded-lg border-l-4 border-orange-400 text-sm">
-                <span>🌾 บาร์เลย์</span> <span class="font-bold text-orange-400" id="stat-barley">0</span>
-            </div>
-            <div class="flex justify-between items-center bg-gray-700/50 p-2 rounded-lg border-l-4 border-yellow-500 text-sm">
-                <span>🌽 ข้าวโพด</span> <span class="font-bold text-yellow-500" id="stat-corn">0</span>
-            </div>
-            <div class="flex justify-between items-center bg-gray-700/50 p-2 rounded-lg border-l-4 border-green-400 text-sm">
-                <span>🫘 ถั่วเหลือง</span> <span class="font-bold text-green-400" id="stat-soybean">0</span>
-            </div>
-            <div class="flex justify-between items-center bg-gray-700/50 p-2 rounded-lg border-l-4 border-white text-sm">
-                <span>🥛 นมวัว</span> <span class="font-bold text-white" id="stat-milk">0</span>
-            </div>
-            <div class="flex justify-between items-center bg-gray-700/50 p-2 rounded-lg border-l-4 border-orange-200 text-sm">
-                <span>🥚 ไข่ไก่</span> <span class="font-bold text-orange-200" id="stat-egg">0</span>
-            </div>
-        </div>
 
-        <h2 class="text-xl font-semibold mb-3 text-white border-b border-gray-600 pb-2">🛒 โชว์รูมหุ่นยนต์ออโต้</h2>
-        <div class="grid grid-cols-1 gap-2 mb-4">
-            <button onclick="buyCar('auto_m1')" class="bg-gray-900 border border-gray-700 hover:border-gray-400 rounded-xl p-2 transition w-full">
-                <div class="flex justify-between items-center px-1">
-                    <div class="flex items-center gap-3">
-                        <span class="text-3xl">🚜</span>
-                        <div class="text-left">
-                            <span class="text-[12px] font-bold text-white block">รุ่นเริ่มต้น</span>
-                            <span class="text-[12px] text-green-400 block font-semibold">10,000 ฿</span>
+            <h2 class="text-xl font-semibold mb-3 text-white border-b border-gray-600 pb-2">🛒 โชว์รูมหุ่นยนต์ออโต้</h2>
+            <div class="grid grid-cols-1 gap-2 mb-4">
+                <button onclick="buyCar('auto_m1')" class="bg-gray-900 border border-gray-700 hover:border-gray-400 rounded-xl p-2 transition w-full">
+                    <div class="flex justify-between items-center px-1">
+                        <div class="flex items-center gap-3">
+                            <span class="text-3xl">🚜</span>
+                            <div class="text-left">
+                                <span class="text-[12px] font-bold text-white block">รุ่นเริ่มต้น</span>
+                                <span class="text-[12px] text-green-400 block font-semibold">10,000 ฿</span>
+                            </div>
                         </div>
+                        <span class="text-xs bg-gray-700 text-white px-2 py-1 rounded-full border border-gray-500">มี <span id="count-auto_m1" class="text-gray-300 font-bold">1</span></span>
                     </div>
-                    <span class="text-xs bg-gray-700 text-white px-2 py-1 rounded-full border border-gray-500">มี <span id="count-auto_m1" class="text-gray-300 font-bold">1</span></span>
-                </div>
-            </button>
-            <button onclick="buyCar('auto_m2')" class="bg-gray-900 border border-gray-700 hover:border-yellow-500 rounded-xl p-2 transition w-full">
-                <div class="flex justify-between items-center px-1">
-                    <div class="flex items-center gap-3">
-                        <span class="text-3xl">🤖</span>
-                        <div class="text-left">
-                            <span class="text-[12px] font-bold text-white block">รุ่นมาตรฐาน</span>
-                            <span class="text-[12px] text-green-400 block font-semibold">20,000 ฿</span>
+                </button>
+                <button onclick="buyCar('auto_m2')" class="bg-gray-900 border border-gray-700 hover:border-yellow-500 rounded-xl p-2 transition w-full">
+                    <div class="flex justify-between items-center px-1">
+                        <div class="flex items-center gap-3">
+                            <span class="text-3xl">🤖</span>
+                            <div class="text-left">
+                                <span class="text-[12px] font-bold text-white block">รุ่นมาตรฐาน</span>
+                                <span class="text-[12px] text-green-400 block font-semibold">20,000 ฿</span>
+                            </div>
                         </div>
+                        <span class="text-xs bg-gray-700 text-white px-2 py-1 rounded-full border border-gray-500">มี <span id="count-auto_m2" class="text-yellow-400 font-bold">0</span></span>
                     </div>
-                    <span class="text-xs bg-gray-700 text-white px-2 py-1 rounded-full border border-gray-500">มี <span id="count-auto_m2" class="text-yellow-400 font-bold">0</span></span>
-                </div>
-            </button>
-            <button onclick="buyCar('auto_m3')" class="bg-gray-900 border border-gray-700 hover:border-green-500 rounded-xl p-2 transition w-full">
-                <div class="flex justify-between items-center px-1">
-                    <div class="flex items-center gap-3">
-                        <span class="text-3xl">🚙</span>
-                        <div class="text-left">
-                            <span class="text-[12px] font-bold text-white block">รุ่นความเร็วสูง</span>
-                            <span class="text-[12px] text-green-400 block font-semibold">30,000 ฿</span>
+                </button>
+                <button onclick="buyCar('auto_m3')" class="bg-gray-900 border border-gray-700 hover:border-green-500 rounded-xl p-2 transition w-full">
+                    <div class="flex justify-between items-center px-1">
+                        <div class="flex items-center gap-3">
+                            <span class="text-3xl">🚙</span>
+                            <div class="text-left">
+                                <span class="text-[12px] font-bold text-white block">รุ่นความเร็วสูง</span>
+                                <span class="text-[12px] text-green-400 block font-semibold">30,000 ฿</span>
+                            </div>
                         </div>
+                        <span class="text-xs bg-gray-700 text-white px-2 py-1 rounded-full border border-gray-500">มี <span id="count-auto_m3" class="text-green-400 font-bold">0</span></span>
                     </div>
-                    <span class="text-xs bg-gray-700 text-white px-2 py-1 rounded-full border border-gray-500">มี <span id="count-auto_m3" class="text-green-400 font-bold">0</span></span>
-                </div>
-            </button>
-            <button onclick="buyCar('auto_m4')" class="bg-gray-900 border border-gray-700 hover:border-blue-500 rounded-xl p-2 transition w-full">
-                <div class="flex justify-between items-center px-1">
-                    <div class="flex items-center gap-3">
-                        <span class="text-3xl">🏎️</span>
-                        <div class="text-left">
-                            <span class="text-[12px] font-bold text-white block">รุ่นซุปเปอร์สปีด</span>
-                            <span class="text-[12px] text-green-400 block font-semibold">45,000 ฿</span>
+                </button>
+                <button onclick="buyCar('auto_m4')" class="bg-gray-900 border border-gray-700 hover:border-blue-500 rounded-xl p-2 transition w-full">
+                    <div class="flex justify-between items-center px-1">
+                        <div class="flex items-center gap-3">
+                            <span class="text-3xl">🏎️</span>
+                            <div class="text-left">
+                                <span class="text-[12px] font-bold text-white block">รุ่นซุปเปอร์สปีด</span>
+                                <span class="text-[12px] text-green-400 block font-semibold">45,000 ฿</span>
+                            </div>
                         </div>
+                        <span class="text-xs bg-gray-700 text-white px-2 py-1 rounded-full border border-gray-500">มี <span id="count-auto_m4" class="text-blue-400 font-bold">0</span></span>
                     </div>
-                    <span class="text-xs bg-gray-700 text-white px-2 py-1 rounded-full border border-gray-500">มี <span id="count-auto_m4" class="text-blue-400 font-bold">0</span></span>
-                </div>
-            </button>
-            <button onclick="buyCar('auto_m5')" class="bg-gray-900 border border-gray-700 hover:border-red-500 rounded-xl p-2 transition w-full">
-                <div class="flex justify-between items-center px-1">
-                    <div class="flex items-center gap-3">
-                        <span class="text-3xl">🚀</span>
-                        <div class="text-left">
-                            <span class="text-[12px] font-bold text-white block">รุ่นอัลตร้าเทอร์โบ</span>
-                            <span class="text-[12px] text-green-400 block font-semibold">60,000 ฿</span>
+                </button>
+                <button onclick="buyCar('auto_m5')" class="bg-gray-900 border border-gray-700 hover:border-red-500 rounded-xl p-2 transition w-full">
+                    <div class="flex justify-between items-center px-1">
+                        <div class="flex items-center gap-3">
+                            <span class="text-3xl">🚀</span>
+                            <div class="text-left">
+                                <span class="text-[12px] font-bold text-white block">รุ่นอัลตร้าเทอร์โบ</span>
+                                <span class="text-[12px] text-green-400 block font-semibold">60,000 ฿</span>
+                            </div>
                         </div>
+                        <span class="text-xs bg-gray-700 text-white px-2 py-1 rounded-full border border-gray-500">มี <span id="count-auto_m5" class="text-red-400 font-bold">0</span></span>
                     </div>
-                    <span class="text-xs bg-gray-700 text-white px-2 py-1 rounded-full border border-gray-500">มี <span id="count-auto_m5" class="text-red-400 font-bold">0</span></span>
-                </div>
-            </button>
-        </div>
+                </button>
+            </div>
 
-        <h2 class="text-xl font-semibold mb-2 text-white border-b border-gray-600 pb-1 flex justify-between items-center">
-            <span>💰 ตลาดกลาง</span>
-            <span id="market-status-text" class="text-[11px] text-green-400 bg-gray-900 px-2 py-0.5 rounded-full border border-gray-700">(เปิด)</span>
-        </h2>
-        <div class="grid grid-cols-1 gap-1 mb-4 max-h-[22vh] overflow-y-auto pr-1">
-            <button onclick="openSellModal('oat')" class="market-sell-btn bg-yellow-700 hover:bg-yellow-600 text-white py-1.5 px-3 rounded-lg transition shadow text-xs flex justify-between items-center group">
-                <span>ขาย ข้าวโอ๊ต</span> <span class="text-green-300">15 ฿</span>
-            </button>
-            <button onclick="openSellModal('wheat')" class="market-sell-btn bg-yellow-600 hover:bg-yellow-500 text-white py-1.5 px-3 rounded-lg transition shadow text-xs flex justify-between items-center group">
-                <span>ขาย ข้าวสาลี</span> <span class="text-green-200">20 ฿</span>
-            </button>
-            <button onclick="openSellModal('barley')" class="market-sell-btn bg-orange-600 hover:bg-orange-500 text-white py-1.5 px-3 rounded-lg transition shadow text-xs flex justify-between items-center group">
-                <span>ขาย บาร์เลย์</span> <span class="text-green-200">30 ฿</span>
-            </button>
-            <button onclick="openSellModal('corn')" class="market-sell-btn bg-yellow-500 hover:bg-yellow-400 text-white py-1.5 px-3 rounded-lg transition shadow text-xs flex justify-between items-center group font-semibold text-gray-900">
-                <span>ขาย ข้าวโพด</span> <span>45 ฿</span>
-            </button>
-            <button onclick="openSellModal('soybean')" class="market-sell-btn bg-green-600 hover:bg-green-500 text-white py-1.5 px-3 rounded-lg transition shadow text-xs flex justify-between items-center group">
-                <span>ขาย ถั่วเหลือง</span> <span class="text-green-200">60 ฿</span>
-            </button>
-            <button onclick="openSellModal('milk')" class="market-sell-btn bg-gray-300 hover:bg-gray-100 text-gray-900 py-1.5 px-3 rounded-lg transition shadow text-xs flex justify-between items-center group font-bold">
-                <span>ขาย นมวัว</span> <span class="text-green-700">50 ฿</span>
-            </button>
-            <button onclick="openSellModal('egg')" class="market-sell-btn bg-orange-200 hover:bg-orange-100 text-orange-900 py-1.5 px-3 rounded-lg transition shadow text-xs flex justify-between items-center group font-bold">
-                <span>ขาย ไข่ไก่</span> <span class="text-green-700">15 ฿</span>
-            </button>
+            <h2 class="text-xl font-semibold mb-2 text-white border-b border-gray-600 pb-1 flex justify-between items-center">
+                <span>💰 ตลาดกลาง</span>
+                <span id="market-status-text" class="text-[11px] text-green-400 bg-gray-900 px-2 py-0.5 rounded-full border border-gray-700">(เปิด)</span>
+            </h2>
+            <div class="grid grid-cols-1 gap-1 mb-6 pr-1">
+                <button onclick="openSellModal('oat')" class="market-sell-btn bg-yellow-700 hover:bg-yellow-600 text-white py-1.5 px-3 rounded-lg transition shadow text-xs flex justify-between items-center group">
+                    <span>ขาย ข้าวโอ๊ต</span> <span class="text-green-300">15 ฿</span>
+                </button>
+                <button onclick="openSellModal('wheat')" class="market-sell-btn bg-yellow-600 hover:bg-yellow-500 text-white py-1.5 px-3 rounded-lg transition shadow text-xs flex justify-between items-center group">
+                    <span>ขาย ข้าวสาลี</span> <span class="text-green-200">20 ฿</span>
+                </button>
+                <button onclick="openSellModal('barley')" class="market-sell-btn bg-orange-600 hover:bg-orange-500 text-white py-1.5 px-3 rounded-lg transition shadow text-xs flex justify-between items-center group">
+                    <span>ขาย บาร์เลย์</span> <span class="text-green-200">30 ฿</span>
+                </button>
+                <button onclick="openSellModal('corn')" class="market-sell-btn bg-yellow-500 hover:bg-yellow-400 text-white py-1.5 px-3 rounded-lg transition shadow text-xs flex justify-between items-center group font-semibold text-gray-900">
+                    <span>ขาย ข้าวโพด</span> <span>45 ฿</span>
+                </button>
+                <button onclick="openSellModal('soybean')" class="market-sell-btn bg-green-600 hover:bg-green-500 text-white py-1.5 px-3 rounded-lg transition shadow text-xs flex justify-between items-center group">
+                    <span>ขาย ถั่วเหลือง</span> <span class="text-green-200">60 ฿</span>
+                </button>
+                <button onclick="openSellModal('milk')" class="market-sell-btn bg-gray-300 hover:bg-gray-100 text-gray-900 py-1.5 px-3 rounded-lg transition shadow text-xs flex justify-between items-center group font-bold">
+                    <span>ขาย นมวัว</span> <span class="text-green-700">50 ฿</span>
+                </button>
+                <button onclick="openSellModal('egg')" class="market-sell-btn bg-orange-200 hover:bg-orange-100 text-orange-900 py-1.5 px-3 rounded-lg transition shadow text-xs flex justify-between items-center group font-bold">
+                    <span>ขาย ไข่ไก่</span> <span class="text-green-700">15 ฿</span>
+                </button>
+            </div>
         </div>
         
-        <div class="mt-auto pt-2 border-t border-gray-600">
-            <button onclick="returnToMenu()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-2 px-3 rounded-lg transition shadow font-bold flex items-center justify-center gap-2 text-sm">
-                <span>🔙</span> กลับหน้าหลัก
+        <div class="mt-auto pt-4 border-t border-gray-600 flex gap-2 shrink-0">
+            <button id="btn-mute-panel" onclick="toggleMute()" class="w-1/2 bg-gray-700 hover:bg-gray-600 text-white py-2 px-2 rounded-lg transition shadow font-bold flex items-center justify-center gap-1 text-sm">
+                🔊 เสียง
+            </button>
+            <button onclick="togglePanel()" class="w-1/2 bg-red-600 hover:bg-red-500 text-white py-2 px-2 rounded-lg transition shadow font-bold flex items-center justify-center gap-1 text-sm">
+                <span>❌</span> ปิดหน้าต่าง
             </button>
         </div>
     </div>
@@ -343,11 +351,11 @@
             <div class="space-y-2">
                 <button onclick="buyAnimal('chicken')" class="w-full bg-orange-700 hover:bg-orange-600 text-white font-bold py-3 px-4 rounded-xl text-md transition shadow-md flex justify-between items-center border border-orange-500">
                     <span>🐔 ซื้อ ไก่ไข่</span>
-                    <span class="text-orange-200">500 ฿</span>
+                    <span class="text-orange-200">100 ฿</span>
                 </button>
                 <button onclick="buyAnimal('cow')" class="w-full bg-gray-200 hover:bg-white text-gray-900 font-bold py-3 px-4 rounded-xl text-md transition shadow-md flex justify-between items-center border border-gray-400">
                     <span>🐮 ซื้อ วัวนม</span>
-                    <span class="text-green-700">2,000 ฿</span>
+                    <span class="text-green-700">1,000 ฿</span>
                 </button>
             </div>
             
@@ -503,18 +511,21 @@
             } catch (e) {}
         }
 
+        // อัพเดทฟังก์ชันปิด/เปิดเสียงให้ควบคุมได้ทั้ง 2 ปุ่ม
         function toggleMute() {
             isMuted = !isMuted;
             const bgm = document.getElementById('bgm');
-            const btn = document.getElementById('btn-mute');
+            const btnHud = document.getElementById('btn-mute');
+            const btnPanel = document.getElementById('btn-mute-panel');
+            
             if(isMuted) {
                 bgm.pause();
-                btn.innerHTML = '🔇 ปิดเสียง';
-                btn.classList.replace('bg-green-600', 'bg-gray-600');
+                if(btnHud) { btnHud.innerHTML = '🔇 ปิดเสียง'; btnHud.classList.replace('bg-green-600', 'bg-gray-600'); }
+                if(btnPanel) { btnPanel.innerHTML = '🔇 เสียง'; btnPanel.classList.replace('bg-gray-700', 'bg-gray-600'); }
             } else {
                 bgm.play();
-                btn.innerHTML = '🔊 เปิดเสียง';
-                btn.classList.replace('bg-gray-600', 'bg-green-600');
+                if(btnHud) { btnHud.innerHTML = '🔊 เปิดเสียง'; btnHud.classList.replace('bg-gray-600', 'bg-green-600'); }
+                if(btnPanel) { btnPanel.innerHTML = '🔊 เสียง'; btnPanel.classList.replace('bg-gray-600', 'bg-gray-700'); }
             }
             sfx.click();
         }
@@ -763,7 +774,6 @@
             }
         }
 
-        // --- ระบบซื้อสัตว์ ---
         function openAnimalShopModal(plotIndex) {
             sfx.click();
             selectedPlotIndex = plotIndex;
@@ -784,8 +794,29 @@
             modal.children[0].classList.replace('scale-100', 'scale-95');
         }
 
+        // ฟังชันก์ใหม่สำหรับเสกสัตว์เพื่อลดโค้ดซ้ำ
+        function spawnAnimal(type, plotIndex) {
+            let group = type === 'cow' ? createCowModel() : createChickenModel();
+            let pX = plotIndex % PLOTS_X;
+            let pZ = Math.floor(plotIndex / PLOTS_X);
+            // กระจายจุดเกิดเล็กน้อยเพื่อไม่ให้ซ้อนทับกัน
+            let cx = (pX * (PLOT_SIZE + GAP)) + (PLOT_SIZE / 2) + (Math.random() * 2 - 1);
+            let cz = (pZ * (PLOT_SIZE + GAP)) + (PLOT_SIZE / 2) + (Math.random() * 2 - 1);
+            
+            group.position.set(cx, 0, cz);
+            envGroup.add(group);
+            
+            farmAnimals.push({
+                type: type,
+                plotIndex: plotIndex,
+                group: group,
+                targetPos: null,
+                speed: type === 'cow' ? 0.5 : 0.8
+            });
+        }
+
         function buyAnimal(type) {
-            const cost = type === 'cow' ? 2000 : 500;
+            const cost = type === 'cow' ? 1000 : 100;
             const animalsHere = farmAnimals.filter(a => a.plotIndex === selectedPlotIndex).length;
             
             if (animalsHere >= 5) {
@@ -798,22 +829,7 @@
                 inventory.money -= cost;
                 sfx.buy();
                 
-                let group = type === 'cow' ? createCowModel() : createChickenModel();
-                let pX = selectedPlotIndex % PLOTS_X;
-                let pZ = Math.floor(selectedPlotIndex / PLOTS_X);
-                let cx = (pX * (PLOT_SIZE + GAP)) + (PLOT_SIZE / 2);
-                let cz = (pZ * (PLOT_SIZE + GAP)) + (PLOT_SIZE / 2);
-                
-                group.position.set(cx, 0, cz);
-                envGroup.add(group);
-                
-                farmAnimals.push({
-                    type: type,
-                    plotIndex: selectedPlotIndex,
-                    group: group,
-                    targetPos: null,
-                    speed: type === 'cow' ? 0.5 : 0.8
-                });
+                spawnAnimal(type, selectedPlotIndex);
                 
                 updateUI();
                 closeAnimalShop();
@@ -931,6 +947,7 @@
             const lr = new THREE.Mesh(legGeo, yMat); lr.position.set(-0.05, 0.05, 0); lr.name="leg2";
             group.add(ll, lr);
 
+            group.scale.set(2, 2, 2); 
             return group;
         }
 
@@ -946,16 +963,15 @@
             liquid.position.y = 0.28; group.add(liquid);
             
             group.userData = { isDrop: true, type: 'milk' };
-            group.children.forEach(c => c.userData = group.userData);
             return group;
         }
 
         function createEggModel() {
-            const eggGeo = new THREE.SphereGeometry(0.12, 16, 16);
+            const eggGeo = new THREE.SphereGeometry(0.25, 16, 16); 
             eggGeo.scale(1, 1.3, 1);
             const eggMat = new THREE.MeshLambertMaterial({ color: 0xfff3e0 });
             const egg = new THREE.Mesh(eggGeo, eggMat);
-            egg.position.y = 0.1;
+            egg.position.y = 0.25; 
             egg.castShadow = true;
             egg.userData = { isDrop: true, type: 'egg' };
             return egg;
@@ -1000,6 +1016,28 @@
             group.userData = { isDog: true };
             group.children.forEach(c => c.userData = { isDog: true });
             
+            return group;
+        }
+
+        // ฟังชันก์สร้างเพิงพักสำหรับสัตว์
+        function createShelter() {
+            const group = new THREE.Group();
+            const woodMat = new THREE.MeshLambertMaterial({ color: 0x5c4033 });
+            const roofMat = new THREE.MeshLambertMaterial({ color: 0x8b0000 });
+            
+            const postGeo = new THREE.BoxGeometry(0.2, 2, 0.2);
+            const p1 = new THREE.Mesh(postGeo, woodMat); p1.position.set(-1.5, 1, -1.5); p1.castShadow = true;
+            const p2 = new THREE.Mesh(postGeo, woodMat); p2.position.set(1.5, 1, -1.5); p2.castShadow = true;
+            const p3 = new THREE.Mesh(postGeo, woodMat); p3.position.set(-1.5, 1, 1.5); p3.castShadow = true;
+            const p4 = new THREE.Mesh(postGeo, woodMat); p4.position.set(1.5, 1, 1.5); p4.castShadow = true;
+            
+            const roofGeo = new THREE.ConeGeometry(2.8, 1.2, 4);
+            const roof = new THREE.Mesh(roofGeo, roofMat);
+            roof.position.set(0, 2.6, 0);
+            roof.rotation.y = Math.PI / 4;
+            roof.castShadow = true;
+            
+            group.add(p1, p2, p3, p4, roof);
             return group;
         }
 
@@ -1182,11 +1220,11 @@
             return group;
         }
 
-        const groundGeo = new THREE.PlaneGeometry(COLS + 6, ROWS + 6);
+        const groundGeo = new THREE.PlaneGeometry(500, 500); 
         const groundMat = new THREE.MeshLambertMaterial({ color: 0x3d7a26 }); 
         const ground = new THREE.Mesh(groundGeo, groundMat);
         ground.rotation.x = -Math.PI / 2;
-        ground.position.set(COLS/2 - 0.5, 0, ROWS/2 - 0.5); 
+        ground.position.set(COLS/2, 0, ROWS/2); 
         ground.receiveShadow = true;
         scene.add(ground);
 
@@ -1214,16 +1252,35 @@
 
             scene.background = new THREE.Color(0x87CEEB);
 
-            const wallMat = new THREE.MeshLambertMaterial({ color: 0x325e1a }); 
-            for (let z = -2; z <= ROWS + 1; z++) {
-                for (let x = -2; x <= COLS + 1; x++) {
-                    if (x < 0 || x >= COLS || z < 0 || z >= ROWS) {
-                        let h = Math.random() * 3 + 2; 
-                        const wall = new THREE.Mesh(new THREE.BoxGeometry(1, h, 1), wallMat);
-                        wall.position.set(x, h/2, z);
-                        envGroup.add(wall);
-                    }
-                }
+            const mountainMat = new THREE.MeshLambertMaterial({ color: 0x2d5e1e }); 
+            const pad1 = 12; 
+            const pad2 = 20; 
+
+            function spawnMountain(px, pz, sizeMultiplier) {
+                let h = (8 + Math.random() * 12) * sizeMultiplier;
+                let radius = (4 + Math.random() * 3) * sizeMultiplier;
+                const mountain = new THREE.Mesh(new THREE.ConeGeometry(radius, h, 6), mountainMat);
+                mountain.position.set(px + (Math.random()*4-2), h/2, pz + (Math.random()*4-2));
+                mountain.rotation.y = Math.random() * Math.PI;
+                envGroup.add(mountain);
+            }
+
+            for (let x = -pad1; x <= COLS + pad1; x += 6) {
+                spawnMountain(x, -pad1, 1);
+                spawnMountain(x, ROWS + pad1, 1);
+            }
+            for (let z = -pad1 + 6; z <= ROWS + pad1 - 6; z += 6) {
+                spawnMountain(-pad1, z, 1);
+                spawnMountain(COLS + pad1, z, 1);
+            }
+
+            for (let x = -pad2; x <= COLS + pad2; x += 8) {
+                spawnMountain(x, -pad2, 1.5);
+                spawnMountain(x, ROWS + pad2, 1.5);
+            }
+            for (let z = -pad2 + 8; z <= ROWS + pad2 - 8; z += 8) {
+                spawnMountain(-pad2, z, 1.5);
+                spawnMountain(COLS + pad2, z, 1.5);
             }
 
             const plotCrops = ['wheat', 'corn', 'barley', 'soybean', 'empty_silo', 'wheat', 'livestock', 'livestock', 'livestock'];
@@ -1250,9 +1307,23 @@
 
                     let isOwned = isSiloPlot ? true : ownedPlots[plotIndex];
                     let fenceGroup = createPlotFence(isOwned);
-                    fenceGroup.position.set(cx, 0, cz);
+                    fenceGroup.position.set(cx, 0.01, cz); 
                     envGroup.add(fenceGroup);
                     plotFences[plotIndex] = fenceGroup;
+                    
+                    // เพิ่มคอกวัว/ไก่ และรางน้ำในแปลงปศุสัตว์
+                    if (isLivestock) {
+                        let shelter = createShelter();
+                        shelter.position.set(cx - PLOT_SIZE/2 + 2.5, 0, cz - PLOT_SIZE/2 + 2.5);
+                        envGroup.add(shelter);
+                        
+                        let troughGeo = new THREE.BoxGeometry(1.5, 0.4, 0.8);
+                        let troughMat = new THREE.MeshLambertMaterial({ color: 0x888888 });
+                        let trough = new THREE.Mesh(troughGeo, troughMat);
+                        trough.position.set(cx + PLOT_SIZE/2 - 2, 0.2, cz - PLOT_SIZE/2 + 1.5);
+                        trough.castShadow = true;
+                        envGroup.add(trough);
+                    }
                 }
             }
 
@@ -1299,6 +1370,10 @@
             }
             
             if(hasDog) spawnDog();
+
+            // เริ่มต้นให้มีวัว และไก่ อย่างละ 1 ตัวในแปลงที่ 7 (แปลงปศุสัตว์)
+            spawnAnimal('cow', 7);
+            spawnAnimal('chicken', 7);
 
             let carIdCounter = 0;
             for(let key in ownedCars) {
@@ -1350,17 +1425,28 @@
             }
         }, 30000); 
 
-        // ระบบสุ่มผลผลิตปศุสัตว์
         setInterval(() => {
             if (!isFarmActive || isPaused) return;
-            farmAnimals.forEach(a => {
-                if (Math.random() < 0.4) { 
-                    let drop = a.type === 'cow' ? createMilkModel() : createEggModel();
+            
+            let droppedEgg = false;
+            let droppedMilk = false;
+            
+            let shuffledAnimals = [...farmAnimals].sort(() => Math.random() - 0.5);
+            
+            shuffledAnimals.forEach(a => {
+                if (a.type === 'cow' && !droppedMilk) {
+                    let drop = createMilkModel();
                     drop.position.set(a.group.position.x, 0, a.group.position.z);
                     itemGroup.add(drop);
+                    droppedMilk = true;
+                } else if (a.type === 'chicken' && !droppedEgg) {
+                    let drop = createEggModel();
+                    drop.position.set(a.group.position.x, 0, a.group.position.z);
+                    itemGroup.add(drop);
+                    droppedEgg = true;
                 }
             });
-        }, 5000);
+        }, 10000);
 
         setInterval(() => {
             if (!isFarmActive || isPaused) return;
@@ -1512,7 +1598,7 @@
         }
 
         // ==========================================
-        // ระบบลากหน้าจอ & คลิกเลือกแปลง & คลิกเก็บของ
+        // ระบบลากหน้าจอ & คลิกเลือกแปลง & คลิกเก็บของ & ซูม
         // ==========================================
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
@@ -1532,7 +1618,7 @@
             const deltaY = event.deltaY;
             const newY = camera.position.y + (deltaY * zoomSpeed);
 
-            if (newY >= 10 && newY <= 60) {
+            if (newY >= 10 && newY <= 150) { 
                 camera.position.y = newY;
                 camera.position.z += (deltaY * zoomSpeed * 0.5); 
             }
@@ -1587,7 +1673,7 @@
                 const itemIntersects = raycaster.intersectObject(itemGroup, true);
                 if (itemIntersects.length > 0) {
                     let mesh = itemIntersects[0].object;
-                    while(mesh.parent && !mesh.userData.isDrop) mesh = mesh.parent;
+                    while(mesh.parent && mesh.parent !== itemGroup) mesh = mesh.parent;
                     
                     if (mesh.userData && mesh.userData.isDrop) {
                         if(getTotalStorage() >= siloCount * SILO_CAPACITY) {
@@ -2314,7 +2400,6 @@
                     }
                 });
                 
-                // แอนิเมชันไอเทมดรอปลอยหมุนๆ
                 itemGroup.children.forEach(item => {
                     item.rotation.y += delta;
                 });
@@ -2413,7 +2498,7 @@
             } else {
                 storageContainer.classList.remove('bg-red-900/80', 'border-red-500', 'animate-pulse', 'text-white');
                 storageContainer.classList.add('bg-blue-900/60', 'border-blue-500', 'text-blue-200');
-                storageContainer.innerHTML = `📦 ความจุ: <span id="hud-storage">${currentTotal.toLocaleString()}</span> / <span id="hud-max-storage">${maxCapacity.toLocaleString()}</span>`;
+                storageContainer.innerHTML = `📦 <span id="hud-storage">${currentTotal.toLocaleString()}</span>/<span id="hud-max-storage">${maxCapacity.toLocaleString()}</span>`;
                 
                 isStorageFullNotified = false;
             }
