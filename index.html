@@ -728,17 +728,17 @@
         let growthLogicalSaved = null;
         let savedAnimals = null;
 
-        function saveGameData(forceUid = null) {
+   function saveGameData(forceUid = null) {
             const uid = forceUid || (currentUser ? currentUser.uid : null);
             if (!uid) {
                 if(!forceUid) showMessage('แจ้งเตือน', 'ไม่พบข้อมูลบัญชี กรุณาล็อกอินใหม่', '⚠️');
-                return Promise.resolve(); // Return a promise consistently
+                return Promise.resolve();
             }
 
             let animalsToSave = farmAnimals ? farmAnimals.map(a => ({ type: a.type, plotIndex: a.plotIndex })) : [];
 
             const saveData = {
-                playerName: playerName, // บันทึกชื่อผู้เล่น
+                playerName: playerName, 
                 inventory: inventory || {},
                 ownedPlots: ownedPlots || [],
                 siloCount: siloCount || 1,
@@ -754,7 +754,8 @@
 
             return db.collection("farmSaves").doc(uid).set(saveData, { merge: true })
                 .then(() => {
-                    if(!forceUid) showMessage('บันทึกสำเร็จ!', 'ข้อมูลฟาร์มของคุณถูกบันทึกขึ้น Cloud แล้ว', '💾');
+                    // ✅ เพิ่มเลข 3000 เข้าไปด้านหลังสุดของบรรทัดนี้
+                    if(!forceUid) showMessage('บันทึกสำเร็จ!', 'ข้อมูลฟาร์มของคุณถูกบันทึกขึ้น Cloud แล้ว', '💾', 3000);
                     console.log("บันทึกข้อมูลสำเร็จ!");
                 })
                 .catch((error) => {
@@ -762,6 +763,14 @@
                     if(!forceUid) showMessage('เกิดข้อผิดพลาด!', 'ไม่สามารถบันทึกข้อมูลได้: ' + error.message, '❌');
                 });
         }
+   
+   
+   
+   
+   
+   
+   
+   
 
         function loadGameData(uid) {
             return db.collection("farmSaves").doc(uid).get().then((doc) => {
