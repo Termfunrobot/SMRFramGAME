@@ -97,7 +97,6 @@
         <div class="bg-gray-800 border-4 border-green-500 p-8 rounded-3xl shadow-[0_0_25px_rgba(34,197,94,0.4)] max-w-md w-full mb-10">
             <h2 id="auth-title" class="text-3xl text-white font-bold mb-6 text-center">เข้าสู่ระบบ</h2>
             
-            <!-- เพิ่มช่องกรอกชื่อ (ซ่อนไว้ตอนหน้าล็อกอิน) -->
             <div id="auth-name-container" class="mb-4 hidden">
                 <label class="block text-gray-400 mb-2">ชื่อชาวนา (แสดงในเกม)</label>
                 <div class="flex gap-2">
@@ -190,12 +189,11 @@
 
     <div id="top-hud" style="display: none;" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-30 bg-gray-900/90 border border-gray-600 rounded-full px-4 md:px-6 py-2 shadow-[0_5px_15px_rgba(0,0,0,0.5)] flex flex-nowrap justify-start md:justify-center gap-3 md:gap-5 items-center text-xs md:text-sm backdrop-blur-sm transition-all duration-300 max-w-[95vw] overflow-x-auto whitespace-nowrap no-scrollbar">
         
-        <!-- เพิ่มป้ายชื่อผู้เล่นใน HUD -->
         <div id="hud-name-badge" class="text-white drop-shadow-md shrink-0 font-bold bg-blue-800/80 px-2 py-1 rounded-full border border-blue-500 text-[10px] md:text-xs flex items-center gap-1">
             🧑‍🌾 <span id="hud-player-name" class="max-w-[80px] md:max-w-[120px] truncate">ชาวนา</span>
         </div>
 
-        <div id="hud-time" class="text-white drop-shadow-md shrink-0 font-bold bg-gray-800/80 px-2 py-1 rounded border border-gray-600 text-[10px] md:text-xs">
+        <div id="hud-time" class="hidden text-white drop-shadow-md shrink-0 font-bold bg-gray-800/80 px-2 py-1 rounded border border-gray-600 text-[10px] md:text-xs">
             ☀️ 06:00
         </div>
 
@@ -222,7 +220,6 @@
         </div>
     </div>
 
-    <!-- แผง UI คลังและร้านค้า -->
     <div id="ui-panel" style="display: none;" class="fixed top-0 left-0 h-full w-80 bg-gray-800 p-6 pb-8 shadow-[5px_0_25px_rgba(0,0,0,0.7)] border-r border-gray-700 z-50 transform -translate-x-full transition-transform duration-300 flex flex-col overflow-y-auto">
         <button onclick="togglePanel()" class="absolute top-2 right-4 text-gray-400 hover:text-white text-4xl font-bold z-10">&times;</button>
         
@@ -569,12 +566,12 @@
         </div>
     </div>
 
-    <div id="message-modal" class="fixed inset-0 bg-black/80 flex justify-center items-center opacity-0 pointer-events-none transition-opacity duration-300 z-[100]">
-        <div class="bg-gray-800 border border-gray-600 rounded-xl p-6 max-w-sm w-full text-center shadow-2xl transform scale-95 transition-transform duration-300" id="message-content">
-            <div id="message-icon" class="text-5xl mb-4">💰</div>
-            <h3 id="message-title" class="text-2xl font-bold text-white mb-2">สำเร็จ!</h3>
-            <p id="message-text" class="text-gray-300 mb-6">ข้อความจำลอง</p>
-            <button onclick="closeMessage()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg transition w-full shadow-md">ตกลง</button>
+    <!-- เปลี่ยนจากจอทึบกลางหน้า เป็น Popup ลอยด้านบน -->
+    <div id="message-modal" class="fixed top-20 left-1/2 transform -translate-x-1/2 opacity-0 pointer-events-none transition-all duration-300 z-[100] w-[90%] max-w-sm">
+        <div class="bg-gray-800/95 backdrop-blur-md border-2 border-green-500 rounded-2xl p-5 text-center shadow-[0_15px_30px_rgba(0,0,0,0.6)] transform scale-95 transition-transform duration-300" id="message-content">
+            <div id="message-icon" class="text-4xl mb-2">💰</div>
+            <h3 id="message-title" class="text-xl font-bold text-white mb-1">สำเร็จ!</h3>
+            <p id="message-text" class="text-gray-300 text-sm">ข้อความจำลอง</p>
         </div>
     </div>
 
@@ -600,9 +597,8 @@
 
         let isLoginMode = true;
         let currentUser = null;
-        let playerName = "ชาวนามือใหม่"; // ตัวแปรเก็บชื่อผู้เล่น
+        let playerName = "ชาวนามือใหม่"; 
 
-        // ฟังก์ชันสุ่มชื่อ
         function generateRandomName() {
             try {
                 if(audioCtx && !isSfxMuted) sfx.click();
@@ -626,10 +622,8 @@
             document.getElementById('auth-switch-text').innerText = isLoginMode ? "ยังไม่มีบัญชีใช่ไหม? สมัครสมาชิก" : "มีบัญชีอยู่แล้ว? เข้าสู่ระบบ";
             document.getElementById('auth-error').classList.add('hidden');
             
-            // ซ่อน/แสดง ช่องกรอกชื่อ
             document.getElementById('auth-name-container').classList.toggle('hidden', isLoginMode);
             
-            // ถ้าเข้ามาหน้าสมัครสมาชิกและช่องชื่อยังว่างอยู่ ให้สุ่มชื่อให้เลย
             if(!isLoginMode && !document.getElementById('auth-name').value) {
                 generateRandomName();
             }
@@ -647,21 +641,18 @@
                 return;
             }
 
-            // ถ้าไม่ได้กรอกชื่อ ให้ใส่ค่าเริ่มต้น
             if(!nameInput) {
                 nameInput = "ชาวนานิรนาม_" + Math.floor(Math.random() * 1000);
             }
 
             auth.createUserWithEmailAndPassword(email, password)
                 .then((userCredential) => {
-                    playerName = nameInput; // บันทึกชื่อลงตัวแปร
+                    playerName = nameInput; 
                     
-                    // บันทึกชื่อลง Profile ของ Firebase Auth
                     userCredential.user.updateProfile({
                         displayName: nameInput
                     });
 
-                    // Create basic save on register
                     saveGameData(userCredential.user.uid);
                 })
                 .catch((error) => {
@@ -683,7 +674,6 @@
         }
 
         function handleLogout() {
-            // โชว์ว่ากำลังโหลดถ้ามี
             const savePromise = saveGameData() || Promise.resolve(); 
             
             savePromise.then(() => {
@@ -692,7 +682,6 @@
                 });
             }).catch(err => {
                 console.error("Logout save error", err);
-                // ออกจากระบบเผื่อไว้กรณีเซฟพังจริงๆ
                 auth.signOut().then(() => location.reload());
             });
         }
@@ -702,7 +691,6 @@
                 currentUser = user;
                 document.getElementById('auth-screen').style.display = 'none';
                 
-                // โชว์หน้าโหลดบังไว้ก่อนจนกว่าดึงข้อมูลสำเร็จ (ป้องกันการกดเข้าเกมก่อนข้อมูลมา)
                 const loadingEl = document.getElementById('loading');
                 loadingEl.style.display = 'flex';
                 loadingEl.style.opacity = '1';
@@ -728,11 +716,11 @@
         let growthLogicalSaved = null;
         let savedAnimals = null;
 
-   function saveGameData(forceUid = null) {
+        function saveGameData(forceUid = null) {
             const uid = forceUid || (currentUser ? currentUser.uid : null);
             if (!uid) {
                 if(!forceUid) showMessage('แจ้งเตือน', 'ไม่พบข้อมูลบัญชี กรุณาล็อกอินใหม่', '⚠️');
-                return Promise.resolve();
+                return Promise.resolve(); 
             }
 
             let animalsToSave = farmAnimals ? farmAnimals.map(a => ({ type: a.type, plotIndex: a.plotIndex })) : [];
@@ -754,7 +742,6 @@
 
             return db.collection("farmSaves").doc(uid).set(saveData, { merge: true })
                 .then(() => {
-                    // ✅ เพิ่มเลข 3000 เข้าไปด้านหลังสุดของบรรทัดนี้
                     if(!forceUid) showMessage('บันทึกสำเร็จ!', 'ข้อมูลฟาร์มของคุณถูกบันทึกขึ้น Cloud แล้ว', '💾', 3000);
                     console.log("บันทึกข้อมูลสำเร็จ!");
                 })
@@ -763,21 +750,12 @@
                     if(!forceUid) showMessage('เกิดข้อผิดพลาด!', 'ไม่สามารถบันทึกข้อมูลได้: ' + error.message, '❌');
                 });
         }
-   
-   
-   
-   
-   
-   
-   
-   
 
         function loadGameData(uid) {
             return db.collection("farmSaves").doc(uid).get().then((doc) => {
                 if (doc.exists) {
                     const data = doc.data();
                     
-                    // ดึงชื่อผู้เล่นจากเซฟ ถ้าไม่มีให้ใช้จาก Auth ถ้าไม่มีอีกให้ใช้ค่าเริ่มต้ัน
                     if(data.playerName) {
                         playerName = data.playerName;
                     } else if (currentUser && currentUser.displayName) {
@@ -792,24 +770,21 @@
                     if(data.hasDog !== undefined) hasDog = data.hasDog;
                     if(data.ownedCars) ownedCars = data.ownedCars;
                     
-                    // แปลง String 2D Array กลับมา
                     if(data.boardLogicalStr) boardLogicalSaved = JSON.parse(data.boardLogicalStr);
-                    else if(data.boardLogical) boardLogicalSaved = data.boardLogical; // Fallback เซฟเก่า
+                    else if(data.boardLogical) boardLogicalSaved = data.boardLogical; 
 
                     if(data.growthLogicalStr) growthLogicalSaved = JSON.parse(data.growthLogicalStr);
-                    else if(data.growthLogical) growthLogicalSaved = data.growthLogical; // Fallback เซฟเก่า
+                    else if(data.growthLogical) growthLogicalSaved = data.growthLogical; 
 
                     if(data.farmAnimals) savedAnimals = data.farmAnimals;
 
-                    // เปลี่ยนปุ่มเป็น "เข้าเล่นต่อ"
                     document.getElementById('btn-start').innerHTML = '▶️ เข้าเล่นต่อ';
 
-                    initMenu(); // Update menu display
+                    initMenu(); 
                     console.log("Load Save Complete!");
                 } else {
                     console.log("No save found. Starting new game.");
                     
-                    // ผู้เล่นใหม่ดึงชื่อมาจาก Auth เผื่อเพิ่งสมัคร
                     if (currentUser && currentUser.displayName) {
                         playerName = currentUser.displayName;
                     }
@@ -989,9 +964,6 @@
         ];
 
         const colorDay = new THREE.Color(0x87CEEB);
-        const colorSunset = new THREE.Color(0xfd5e53);
-        const colorNight = new THREE.Color(0x060814);
-        const colorSunrise = new THREE.Color(0xffb775);
         let gameTime = 0;
 
         function getTotalStorage() {
@@ -1002,7 +974,6 @@
         // MENU & UI LOGIC
         // ==========================================
         function initMenu() {
-            // อัปเดตชื่อผู้เล่นในหน้าเมนู
             document.getElementById('menu-player-name').innerText = playerName;
             
             document.getElementById('menu-money').innerText = inventory.money.toLocaleString();
@@ -1021,7 +992,7 @@
             sfx.click();
             isFarmActive = true;
             showGameScreen();
-            generateMap(); // Generates using the updated save data
+            generateMap(); 
             updateUI();
             updateMerchantUI();
             updateMarketUI();
@@ -1147,8 +1118,20 @@
             selectedPlotIndex = plotIndex;
             document.getElementById('animal-plot-subtitle').innerText = plotNames[plotIndex];
             
-            const animalsHere = farmAnimals.filter(a => a.plotIndex === plotIndex).length;
-            document.getElementById('animal-status-ui').innerHTML = `มีสัตว์เลี้ยงในแปลงนี้: <span class="font-bold text-yellow-400">${animalsHere} / 5</span> ตัว`;
+            const chickensHere = farmAnimals.filter(a => a.plotIndex === plotIndex && a.type === 'chicken').length;
+            const cowsHere = farmAnimals.filter(a => a.plotIndex === plotIndex && a.type === 'cow').length;
+
+            document.getElementById('animal-status-ui').innerHTML = `
+                <div class="mb-2 text-gray-400">สถานะแปลงปศุสัตว์นี้:</div>
+                <div class="flex justify-between items-center mb-1">
+                    <span>🐔 ไก่ไข่:</span>
+                    <span class="font-bold text-orange-400">${chickensHere} / 6 ตัว</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span>🐮 วัวนม:</span>
+                    <span class="font-bold text-gray-300">${cowsHere} / 6 ตัว</span>
+                </div>
+            `;
 
             const modal = document.getElementById('animal-shop-modal');
             modal.classList.remove('opacity-0', 'pointer-events-none');
@@ -1186,11 +1169,12 @@
 
         function buyAnimal(type) {
             const cost = type === 'cow' ? 1000 : 100;
-            const animalsHere = farmAnimals.filter(a => a.plotIndex === selectedPlotIndex).length;
+            const typeAnimalsHere = farmAnimals.filter(a => a.plotIndex === selectedPlotIndex && a.type === type).length;
             
-            if (animalsHere >= 5) {
+            if (typeAnimalsHere >= 6) {
                 sfx.error();
-                showMessage('พื้นที่เต็ม!', 'แปลงนี้เลี้ยงสัตว์ได้สูงสุด 5 ตัวเท่านั้น', '🛑');
+                let typeName = type === 'cow' ? 'วัวนม' : 'ไก่ไข่';
+                showMessage('พื้นที่เต็ม!', `แปลงนี้เลี้ยง${typeName}ได้สูงสุดชนิดละ 6 ตัวเท่านั้น`, '🛑');
                 return;
             }
 
@@ -1214,6 +1198,7 @@
         // ==========================================
         const container = document.getElementById('canvas-container');
         const scene = new THREE.Scene();
+        scene.background = colorDay;
         scene.fog = new THREE.Fog(0x87CEEB, 30, 110); 
 
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -1693,6 +1678,29 @@
             }
         }
 
+        function buySilo() {
+            if (siloCount >= MAX_SILOS) {
+                sfx.error();
+                return;
+            }
+
+            if (inventory.money >= SILO_COST) {
+                inventory.money -= SILO_COST;
+                
+                spawnSiloMesh(siloCount);
+                siloCount++; 
+                
+                sfx.buy();
+                updateUI();
+                openSiloModal(); 
+                
+                showMessage('สร้างโรงนาสำเร็จ!', `คุณสร้างโรงนาเพิ่ม 1 หลัง<br>ความจุผลผลิตสูงสุดเพิ่มเป็น ${(siloCount * SILO_CAPACITY).toLocaleString()} หน่วย!`, '🏡');
+            } else {
+                sfx.error();
+                showMessage('เงินไม่พอ!', `ต้องการเงิน ${(SILO_COST).toLocaleString()} ฿ สำหรับสร้างโรงนา`, '❌');
+            }
+        }
+
         function openDogModal() {
             sfx.click();
             document.getElementById('dog-hunger').innerText = dogData.hunger;
@@ -1753,8 +1761,6 @@
             document.getElementById('labels-container').innerHTML = '';
             plotMeshes = new Array(9); 
             plotFences = new Array(9);
-
-            scene.background = new THREE.Color(0x87CEEB);
 
             const mountainMat = new THREE.MeshLambertMaterial({ color: 0x2d5e1e }); 
             const pad1 = 12; 
@@ -1858,7 +1864,6 @@
                     let growth = 0;
 
                     if (isLoadingSave && boardLogicalSaved[z] && growthLogicalSaved[z]) {
-                        // โหลดข้อมูลแปลงที่เซฟไว้
                         cellType = boardLogicalSaved[z][x] || 'empty';
                         growth = growthLogicalSaved[z][x] || 0;
                         
@@ -1869,7 +1874,6 @@
                             mineGroup.add(crop);
                         }
                     } else {
-                        // สร้างแปลงแบบสุ่มตอนเริ่มเล่นครั้งแรก
                         let localX = x % (PLOT_SIZE + GAP);
                         let localZ = z % (PLOT_SIZE + GAP);
                         
@@ -1907,7 +1911,6 @@
             
             if(hasDog) spawnDog();
 
-            // Spawn animals จากเซฟ (ถ้ามี) หรือสุ่มเริ่มต้น
             if (savedAnimals) {
                 savedAnimals.forEach(a => {
                     spawnAnimal(a.type, a.plotIndex);
@@ -2786,41 +2789,6 @@
             if (isFarmActive && !isPaused) {
                 
                 gameTime += delta;
-                let phase = (gameTime % 600) / 600; 
-                let currentSky = new THREE.Color();
-                let ambInt = 1.2;
-                let dirInt = 1.2;
-
-                if (phase < 0.4) {
-                    currentSky.copy(colorDay);
-                    ambInt = 1.2; dirInt = 1.2;
-                } else if (phase < 0.5) {
-                    let t = (phase - 0.4) / 0.1;
-                    if(t < 0.5) currentSky.copy(colorDay).lerp(colorSunset, t*2);
-                    else currentSky.copy(colorSunset).lerp(colorNight, (t-0.5)*2);
-                    ambInt = 1.2 - (0.9 * t); 
-                    dirInt = 1.2 - (1.1 * t); 
-                } else if (phase < 0.9) {
-                    currentSky.copy(colorNight);
-                    ambInt = 0.3; dirInt = 0.1;
-                } else {
-                    let t = (phase - 0.9) / 0.1;
-                    if(t < 0.5) currentSky.copy(colorNight).lerp(colorSunrise, t*2);
-                    else currentSky.copy(colorSunrise).lerp(colorDay, (t-0.5)*2);
-                    ambInt = 0.3 + (0.9 * t); 
-                    dirInt = 0.1 + (1.1 * t); 
-                }
-
-                scene.background = currentSky;
-                scene.fog.color = currentSky;
-                ambientLight.intensity = ambInt;
-                dirLight.intensity = dirInt;
-
-                let inGameHour = Math.floor(phase * 24 + 6) % 24;
-                let inGameMin = Math.floor((phase * 24 * 60) % 60);
-                let icon = (inGameHour >= 6 && inGameHour < 18) ? '☀️' : '🌙';
-                let timeEl = document.getElementById('hud-time');
-                if(timeEl) timeEl.innerText = `${icon} ${inGameHour.toString().padStart(2,'0')}:${inGameMin.toString().padStart(2,'0')}`;
 
                 activeCars.forEach(car => {
                     if (car.assignedPlot === null) return; 
@@ -3084,7 +3052,6 @@
         }
 
         function updateUI() {
-            // อัปเดตป้ายชื่อบน HUD มุมซ้ายบน
             const hudNameEl = document.getElementById('hud-player-name');
             if(hudNameEl) hudNameEl.innerText = playerName;
 
@@ -3140,17 +3107,32 @@
         const modal = document.getElementById('message-modal');
         const modalContent = document.getElementById('message-content');
         
-        function showMessage(title, text, icon = '💬') {
+        let messageTimeout = null;
+
+        function showMessage(title, text, icon = '💬', autoCloseMs = 3000) {
+            if(messageTimeout) {
+                clearTimeout(messageTimeout);
+                messageTimeout = null;
+            }
+
             document.getElementById('message-title').innerText = title;
             document.getElementById('message-text').innerHTML = text;
             document.getElementById('message-icon').innerText = icon;
-            modal.classList.remove('opacity-0', 'pointer-events-none');
+            
+            modal.classList.remove('opacity-0');
             modalContent.classList.replace('scale-95', 'scale-100');
+
+            if(autoCloseMs > 0) {
+                messageTimeout = setTimeout(() => {
+                    closeMessage(true);
+                }, autoCloseMs);
+            }
         }
 
-        function closeMessage() {
-            sfx.click();
-            modal.classList.add('opacity-0', 'pointer-events-none');
+        function closeMessage(isAuto = false) {
+            if(!isAuto && typeof sfx !== 'undefined') sfx.click();
+            
+            modal.classList.add('opacity-0');
             modalContent.classList.replace('scale-100', 'scale-95');
         }
 
