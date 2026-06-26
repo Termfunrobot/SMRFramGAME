@@ -374,7 +374,7 @@
     <div id="leaderboard-modal" class="fixed inset-0 bg-black/80 flex justify-center items-center opacity-0 pointer-events-none transition-opacity duration-300 z-[100]">
         <div class="bg-gray-800 border-2 border-purple-500 rounded-2xl p-6 max-w-md w-full text-center shadow-2xl transform scale-95 transition-transform duration-300">
             <h3 class="text-3xl font-bold text-yellow-400 mb-4 drop-shadow-md">🏆 Top 10 มหาเศรษฐี</h3>
-            <p class="text-gray-300 text-sm mb-4">(จัดอันดับจากเงินสด + มูลค่าผลผลิตในคลัง)</p>
+            <p class="text-gray-300 text-sm mb-4">(จัดอันดับจากยอดเงินสดสะสมในกระเป๋า)</p>
             
             <div id="leaderboard-loading" class="text-white my-8 animate-pulse text-lg">กำลังโหลดข้อมูล...</div>
             
@@ -743,22 +743,11 @@
                 return Promise.resolve(); 
             }
 
-            // คำนวณทรัพย์สินรวม (เงิน + มูลค่าของทุกอย่างในคลัง)
-            let currentTotalAssets = inventory.money || 0;
-            currentTotalAssets += (inventory.oat || 0) * PRICES.oat;
-            currentTotalAssets += (inventory.wheat || 0) * PRICES.wheat;
-            currentTotalAssets += (inventory.barley || 0) * PRICES.barley;
-            currentTotalAssets += (inventory.corn || 0) * PRICES.corn;
-            currentTotalAssets += (inventory.soybean || 0) * PRICES.soybean;
-            currentTotalAssets += (inventory.milk || 0) * PRICES.milk;
-            currentTotalAssets += (inventory.egg || 0) * PRICES.egg;
-
             let animalsToSave = farmAnimals ? farmAnimals.map(a => ({ type: a.type, plotIndex: a.plotIndex })) : [];
 
             const saveData = {
                 playerName: playerName, 
                 inventory: inventory || {},
-                totalAssets: currentTotalAssets, // คำนวณอันดับด้วยทรัพย์สินรวม
                 ownedPlots: ownedPlots || [],
                 siloCount: siloCount || 1,
                 hasDog: hasDog || false,
@@ -948,7 +937,6 @@
         const PRICES = { oat: 15, wheat: 20, barley: 30, corn: 45, soybean: 60, milk: 500, egg: 15 };
         const SEED_COSTS = { oat: 500, wheat: 800, barley: 1200, corn: 2000, soybean: 3000 };
         
-        // --- เปลี่ยนแปลงเงินตั้งต้นเป็น 2,500 ฿ ---
         let inventory = { money: 2500, oat: 0, wheat: 0, barley: 0, corn: 0, soybean: 0, milk: 0, egg: 0 };
         
         let isInMenu = true;
@@ -964,7 +952,6 @@
             auto_m5: { id: 'auto_m5', name: 'รุ่นอัลตร้าเทอร์โบ', cost: 60000, speed: 5.0, color: 0xef4444, icon: '🚀' }
         };
 
-        // --- เปลี่ยนแปลงให้ไม่มีหุ่นยนต์ตั้งต้น (auto_m1 = 0) ---
         let ownedCars = { auto_m1: 0, auto_m2: 0, auto_m3: 0, auto_m4: 0, auto_m5: 0 };
         
         let activeCars = [];
@@ -1078,7 +1065,7 @@
         }
 
         // ==========================================
-        // LEADERBOARD SYSTEM
+        // LEADERBOARD SYSTEM (Client-side sorting)
         // ==========================================
         function openLeaderboard() {
             sfx.click();
@@ -1092,45 +1079,58 @@
             listContainer.innerHTML = '';
             loadingEl.style.display = 'block';
 
+            // ดึงข้อมูลทั้งหมดมาจัดอันดับที่ฝั่ง Client เพื่อหลีกเลี่ยงปัญหา Firebase Index
             db.collection("farmSaves")
-                .orderBy("totalAssets", "desc")
-                .limit(10)
                 .get()
                 .then((querySnapshot) => {
                     loadingEl.style.display = 'none';
+                    
+                    if (querySnapshot.empty) {
+                        listContainer.innerHTML = '<div class="text-center text-gray-400 py-4">ยังไม่มีข้อมูลผู้เล่นในระบบ</div>';
+                        return;
+                    }
+
+                    // จัดเรียงข้อมูล
+                    let players = [];
+                    querySnapshot.forEach((doc) => {
+                        const data = doc.data();
+                        let pName = data.playerName || 'ชาวนานิรนาม';
+                        let money = data.inventory ? (data.inventory.money || 0) : 0;
+                        players.push({ name: pName, money: money });
+                    });
+
+                    // เรียงจากมากไปน้อย
+                    players.sort((a, b) => b.money - a.money);
+                    
+                    // เอาแค่ 10 อันดับแรก
+                    let top10 = players.slice(0, 10);
+
                     let html = '';
                     let rank = 1;
                     
-                    if (querySnapshot.empty) {
-                        html = '<div class="text-center text-gray-400 py-4">ยังไม่มีข้อมูลผู้เล่นในระบบ</div>';
-                    } else {
-                        querySnapshot.forEach((doc) => {
-                            const data = doc.data();
-                            let pName = data.playerName || 'ชาวนานิรนาม';
-                            let assets = data.totalAssets || (data.inventory ? data.inventory.money : 0) || 0;
-                            
-                            let rankIcon = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `<span class="text-gray-400 font-bold w-6 inline-block text-center">${rank}.</span>`;
-                            let bgClass = rank <= 3 ? 'bg-gradient-to-r from-yellow-900/40 to-yellow-700/20 border-yellow-500/50' : 'bg-gray-800/80 border-gray-600';
-                            let textClass = rank <= 3 ? 'text-yellow-400 font-bold' : 'text-white';
+                    top10.forEach((p) => {
+                        let rankIcon = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `<span class="text-gray-400 font-bold w-6 inline-block text-center">${rank}.</span>`;
+                        let bgClass = rank <= 3 ? 'bg-gradient-to-r from-yellow-900/40 to-yellow-700/20 border-yellow-500/50' : 'bg-gray-800/80 border-gray-600';
+                        let textClass = rank <= 3 ? 'text-yellow-400 font-bold' : 'text-white';
 
-                            html += `
-                                <div class="flex justify-between items-center p-3 mb-2 rounded-xl border ${bgClass}">
-                                    <div class="flex items-center gap-3">
-                                        <div class="text-2xl">${rankIcon}</div>
-                                        <div class="${textClass} text-lg truncate max-w-[150px] md:max-w-[200px]" title="${pName}">${pName}</div>
-                                    </div>
-                                    <div class="text-green-400 font-bold text-lg drop-shadow-md">฿ ${assets.toLocaleString()}</div>
+                        html += `
+                            <div class="flex justify-between items-center p-3 mb-2 rounded-xl border ${bgClass}">
+                                <div class="flex items-center gap-3">
+                                    <div class="text-2xl">${rankIcon}</div>
+                                    <div class="${textClass} text-lg truncate max-w-[150px] md:max-w-[200px]" title="${p.name}">${p.name}</div>
                                 </div>
-                            `;
-                            rank++;
-                        });
-                    }
+                                <div class="text-green-400 font-bold text-lg drop-shadow-md">฿ ${p.money.toLocaleString()}</div>
+                            </div>
+                        `;
+                        rank++;
+                    });
+                    
                     listContainer.innerHTML = html;
                 })
                 .catch((error) => {
                     console.error("Error getting leaderboard: ", error);
                     loadingEl.style.display = 'none';
-                    listContainer.innerHTML = '<div class="text-center text-red-400 py-4">เกิดข้อผิดพลาดในการโหลดข้อมูล</div>';
+                    listContainer.innerHTML = `<div class="text-center text-red-400 py-4">เกิดข้อผิดพลาดในการโหลดข้อมูล: ${error.message}</div>`;
                 });
         }
 
@@ -1959,7 +1959,8 @@
                         envGroup.add(cowTrough);
                     }
 
-                    if (isSiloPlot) {
+                    // --- ปรับให้หญ้าเกิดในแปลงปศุสัตว์ด้วย ---
+                    if (isSiloPlot || isLivestock) {
                         for(let i=0; i<60; i++) {
                             let grass = createGrassModel();
                             let gz = cz - PLOT_SIZE/2 + 0.5 + Math.random()*(PLOT_SIZE-1);
